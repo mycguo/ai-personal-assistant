@@ -15,7 +15,6 @@ load_dotenv()
 
 genai.configure(api_key=os.getenv("GENAI_API_KEY"))
 
-
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf_doc in pdf_docs:
