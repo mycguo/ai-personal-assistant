@@ -9,13 +9,11 @@ from langchain.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
-genai.configure(api_key=os.getenv("GENAI_API_KEY"))
-st.write('Current API key:', os.environ.get('GENAI_API_KEY', 'Not Set'))
+#st.write("API Key", st.secrets["GENAI_API_KEY"])
+
+genai.configure(api_key=st.secrets["GENAI_API_KEY"])
 
 
 def get_pdf_text(pdf_docs):
