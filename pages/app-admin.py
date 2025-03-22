@@ -13,9 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-#genai.configure(api_key=os.getenv("GENAI_API_KEY"))
-API_KEY = os.getenv('GENAI_API_KEY"') 
-st.write('Current API key:', os.environ.get('API_KEY', 'Not Set'))
+
+genai.configure(api_key=os.getenv("GENAI_API_KEY"))
+st.write('Current API key:', os.environ.get('GENAI_API_KEY', 'Not Set'))
 
 
 def get_pdf_text(pdf_docs):
