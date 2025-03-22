@@ -86,7 +86,7 @@ def main():
 
     st.header("Adding Word Documents")
     word_docs = st.file_uploader("Upload your knowledge base document", type=["docx"], accept_multiple_files=False)
-    if st.button("Submit & Process Word Document"):
+    if st.button("Submit & Process Word"):
         with st.spinner("Processing your word documents..."):
             if word_docs:
                 # Open the file using docx.Document
@@ -98,8 +98,6 @@ def main():
                 # Example: Extract all paragraphs
                 paragraphs = [p.text for p in doc.paragraphs]
                 #st.write("Paragraphs:")
-                for paragraph in paragraphs:
-                    st.write(paragraph)
                 text = "\n".join(paragraphs)
                 text_chunks = get_text_chunks(text)
                 vector_store = get_vector_store(text_chunks)
@@ -109,7 +107,7 @@ def main():
 
     st.header("Adding Excel Documents")
     excel_file = st.file_uploader("Upload your knowledge base document uinsg Excel", type=["xlsx"], accept_multiple_files=False)
-    if st.button("Submit & Process Excel Document"):
+    if st.button("Submit & Process Excel"):
         with st.spinner("Processing your excel documents..."):
             if excel_file:
                 df = pd.read_excel(excel_file)
@@ -119,5 +117,7 @@ def main():
                 get_chat_chain()
                 st.success("Documents processed successfully")
 
+    st.write("This is how to setup sercets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
+    st.write("This is how to setup sercets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")
 if __name__ == "__main__":
     main()
