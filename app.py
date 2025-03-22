@@ -67,8 +67,8 @@ def user_input(user_question):
 
 
 def main():
-    st.title("Resume Assistant")
-    st.header("chat with my resume")
+    st.title("Knowledge Assistant")
+    st.header("Ask questions on your knowledge base")
 
     user_question = st.text_input("Ask me a question")
     if user_question:
