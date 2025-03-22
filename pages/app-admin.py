@@ -11,6 +11,7 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import docx  # Import the python-docx library
 import pandas as pd
+import requests
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -81,7 +82,6 @@ def main():
                 text = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(text)
                 vector_store = get_vector_store(text_chunks)
-                get_chat_chain()
                 st.success("Documents processed successfully")
 
     st.header("Adding Word Documents")
@@ -101,7 +101,6 @@ def main():
                 text = "\n".join(paragraphs)
                 text_chunks = get_text_chunks(text)
                 vector_store = get_vector_store(text_chunks)
-                get_chat_chain()
                 st.success("Documents processed successfully")
 
 
@@ -114,8 +113,18 @@ def main():
                 text = df.to_string()
                 text_chunks = get_text_chunks(text)
                 vector_store = get_vector_store(text_chunks)
-                get_chat_chain()
                 st.success("Documents processed successfully")
+
+    st.header("URL fetcher")
+    url = st.text_input("Enter the URL")
+    if st.button("Submit & Process URL"):
+        with st.spinner("Processing your URL..."):
+            if url:
+                response = requests.get(url)
+                text = response.text
+                text_chunks = get_text_chunks(text)
+                vector_store = get_vector_store(text_chunks)
+                st.success("URL processed successfully")
 
     st.write("This is how to setup sercets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
     st.write("This is how to setup sercets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")
