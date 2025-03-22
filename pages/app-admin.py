@@ -13,7 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GENAI_API_KEY"))
+#genai.configure(api_key=os.getenv("GENAI_API_KEY"))
+API_KEY = os.getenv('GENAI_API_KEY"') 
+st.write('Current API key:', os.environ.get('API_KEY', 'Not Set'))
 
 
 def get_pdf_text(pdf_docs):
@@ -74,6 +76,13 @@ def main():
     user_question = st.text_input("Ask me a question")
     if user_question:
         user_input(user_question)
+
+#GOOGLE_API_KEY="AIzaSyBfnK9T-MHSAimECBc5Wm0rKUh5aPOvUzY"
+
+    with st.sidebar:
+        API_KEY = st.text_input("API Key", type="password")
+        "[Get an API key](https://aistudio.google.com/app/apikey)"
+
 
     with st.sidebar:
         pdf_docs = st.file_uploader("Upload your resume", type=["pdf"], accept_multiple_files=True)
