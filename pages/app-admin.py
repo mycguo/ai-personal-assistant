@@ -10,6 +10,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import docx  # Import the python-docx library
+import pandas as pd
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -72,6 +73,7 @@ def main():
     st.write("Upload your knowledge base documents to get started")
 
    
+    st.header("Adding PDF Documents")
     pdf_docs = st.file_uploader("Upload your knowledge base document", type=["pdf"], accept_multiple_files=True)
     if st.button("Submit & Process"):
         with st.spinner("Processing your PDF documents..."):
@@ -82,6 +84,7 @@ def main():
                 get_chat_chain()
                 st.success("Documents processed successfully")
 
+    st.header("Adding Word Documents")
     word_docs = st.file_uploader("Upload your knowledge base document", type=["docx"], accept_multiple_files=False)
     if st.button("Submit & Process Word Document"):
         with st.spinner("Processing your word documents..."):
@@ -98,6 +101,19 @@ def main():
                 for paragraph in paragraphs:
                     st.write(paragraph)
                 text = "\n".join(paragraphs)
+                text_chunks = get_text_chunks(text)
+                vector_store = get_vector_store(text_chunks)
+                get_chat_chain()
+                st.success("Documents processed successfully")
+
+
+    st.header("Adding Excel Documents")
+    excel_file = st.file_uploader("Upload your knowledge base document uinsg Excel", type=["xlsx"], accept_multiple_files=False)
+    if st.button("Submit & Process Excel Document"):
+        with st.spinner("Processing your excel documents..."):
+            if excel_file:
+                df = pd.read_excel(excel_file)
+                text = df.to_string()
                 text_chunks = get_text_chunks(text)
                 vector_store = get_vector_store(text_chunks)
                 get_chat_chain()
