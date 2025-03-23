@@ -2,13 +2,9 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain_community.vectorstores import FAISS
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains.question_answering import load_qa_chain
-from langchain.prompts import PromptTemplate
 import docx  # Import the python-docx library
 import pandas as pd
 import requests
@@ -43,37 +39,6 @@ def get_vector_store(text_chunks):
 
     vector_store.save_local("faiss_index")
     return vector_store
-
-
-def get_prompt_template():
-    return PromptTemplate()
-
-def get_chat_chain():
-    prompt_template="""
-    Answer the questions based on my resume honestly
-
-    Context:\n {context} \n
-    Questions: \n {questions} \n
-
-    Answers:
-"""
-    model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
-    prompt=PromptTemplate(template=prompt_template, input_variabls=["context","questions"],output_variables=["answers"])
-    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
-    return chain
-
-def user_input(user_question):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-    docs = vector_store.similarity_search(user_question)
-
-    chain = get_chat_chain()
-
-    response = chain({"input_documents": docs, "questions": user_question}, return_only_outputs=True)              
-
-    print(response)
-    st.write("Reply: ",response["output_text"])
-
 
 def main():
     st.title("Knowledge Assistant")
@@ -141,9 +106,12 @@ def main():
                 st.success("Audio processed successfully")  
                 model = whisper.load_model("base")
                 audio_bytes = audio.read()
-                audio_segment = AudioSegment.from_file(BytesIO(audio_bytes), format="mp3")
+                audio_file = BytesIO(audio_bytes)
+                audio_segment = AudioSegment.from_file(audio_file, format="mp3")
+                audio_segment.export(audio_file, format="wav")
+                audio_file.seek(0)
                 audio_array = np.array(audio_segment.get_array_of_samples(), dtype=np.float32) / 32768.0
-                result = model.transcribe(audio_array)               
+                result = model.transcribe(audio_array)                
                 st.write("Adding the audio text to the knowledge base")
                 st.write(result["text"])
                 text_chunks = get_text_chunks(result["text"])
