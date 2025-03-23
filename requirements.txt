@@ -13,3 +13,5 @@ torch
 openai-whisper
 numpy
 io
+pydub
+

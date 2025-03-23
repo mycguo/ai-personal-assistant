@@ -1,4 +1,4 @@
-#https://www.youtube.com/watch?v=uus5eLz6smA
+# Add app for adding to the knowledge base
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -16,6 +16,8 @@ import torch
 import whisper  
 import numpy as np
 from io import BytesIO
+from pydub import AudioSegment
+
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -131,8 +133,25 @@ def main():
                 vector_store = get_vector_store(text_chunks)
                 st.success("URL processed successfully")
 
+    st.header("Audio support")
+    audio = st.file_uploader("Upload your knowledge base document using Audio", type=["mp3"], accept_multiple_files=False)
+    if st.button("Submit & Process Audio"):
+        with st.spinner("Processing your audio..."):
+            if audio:
+                st.success("Audio processed successfully")  
+                model = whisper.load_model("base")
+                audio_bytes = audio.read()
+                audio_segment = AudioSegment.from_file(BytesIO(audio_bytes), format="mp3")
+                audio_array = np.array(audio_segment.get_array_of_samples(), dtype=np.float32) / 32768.0
+                result = model.transcribe(audio_array)               
+                st.write("Adding the audio text to the knowledge base")
+                st.write(result["text"])
+                text_chunks = get_text_chunks(result["text"])
+                vector_store = get_vector_store(text_chunks)
+                st.success("Text added to knowledge base successfully")
+                
+ 
     st.header("Video support")
-    st.write("We are working on adding video support to extract text from videos. Stay tuned for updates")
     video = st.file_uploader("Upload your knowledge base document using Video", type=["mp4"], accept_multiple_files=False)
     if st.button("Submit & Process Video"):
         with st.spinner("Processing your video..."):
@@ -142,7 +161,12 @@ def main():
                 video_bytes = video.read()
                 audio = np.frombuffer(video_bytes, np.int16).astype(np.float32) / 32768.0
                 result = model.transcribe(audio)
+                st.write("Adding the audio text to the knowledge base")
                 st.write(result["text"])
+                text_chunks = get_text_chunks(result["text"])
+                vector_store = get_vector_store(text_chunks)
+                st.success("Text added to knowledge base successfully")
+                st.write("")
 
     st.write("This is how to setup sercets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
     st.write("This is how to setup sercets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")
