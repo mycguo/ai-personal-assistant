@@ -1,13 +1,13 @@
-#https://www.youtube.com/watch?v=uus5eLz6smA
+# UI for asking questions on the knowledge base
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains.question_answering import load_qa_chain
+from langchain.chains import StuffDocumentsChain, LLMChain  # Updated import
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 
@@ -50,7 +50,8 @@ def get_chat_chain():
 """
     model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
     prompt=PromptTemplate(template=prompt_template, input_variabls=["context","questions"],output_variables=["answers"])
-    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
+    llm_chain = LLMChain(llm=model, prompt=prompt)  # Create LLMChain instance
+    chain = StuffDocumentsChain(llm_chain=llm_chain, document_variable_name="context")  # Pass LLMChain instance and specify document_variable_name
     return chain
 
 def user_input(user_question):
