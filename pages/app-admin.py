@@ -12,6 +12,10 @@ from langchain.prompts import PromptTemplate
 import docx  # Import the python-docx library
 import pandas as pd
 import requests
+import torch
+import whisper  
+import numpy as np
+from io import BytesIO
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -34,6 +38,7 @@ def get_text_chunks(text):
 def get_vector_store(text_chunks):
     embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks,embedding=embedding)
+
     vector_store.save_local("faiss_index")
     return vector_store
 
@@ -125,6 +130,19 @@ def main():
                 text_chunks = get_text_chunks(text)
                 vector_store = get_vector_store(text_chunks)
                 st.success("URL processed successfully")
+
+    st.header("Video support")
+    st.write("We are working on adding video support to extract text from videos. Stay tuned for updates")
+    video = st.file_uploader("Upload your knowledge base document using Video", type=["mp4"], accept_multiple_files=False)
+    if st.button("Submit & Process Video"):
+        with st.spinner("Processing your video..."):
+            if video:
+                st.success("Video processed successfully")  
+                model = whisper.load_model("base")
+                video_bytes = video.read()
+                audio = np.frombuffer(video_bytes, np.int16).astype(np.float32) / 32768.0
+                result = model.transcribe(audio)
+                st.write(result["text"])
 
     st.write("This is how to setup sercets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
     st.write("This is how to setup sercets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")

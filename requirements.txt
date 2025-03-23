@@ -9,3 +9,7 @@ langchain-community
 python-docx
 pandas
 requests
+torch
+openai-whisper
+numpy
+io
