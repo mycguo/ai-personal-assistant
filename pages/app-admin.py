@@ -13,11 +13,18 @@ import whisper
 import numpy as np
 from io import BytesIO
 from pydub import AudioSegment
+from transcriptionServices import englishTranscription
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+import assemblyai as aai
 
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
+#tokens from https://www.assemblyai.com/ to transcribe the audio
+tokens = st.secrets["ASSEMBLYAI_API_KEY"]
+st.write(tokens)
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -39,6 +46,14 @@ def get_vector_store(text_chunks):
 
     vector_store.save_local("faiss_index")
     return vector_store
+
+def generate_word_cloud(text):
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.tight_layout(pad=0)
+    return plt
 
 def main():
     st.title("Knowledge Assistant")
@@ -100,21 +115,20 @@ def main():
 
     st.header("Audio support")
     audio = st.file_uploader("Upload your knowledge base document using Audio", type=["mp3"], accept_multiple_files=False)
-    if st.button("Submit & Process Audio"):
+    getwordcloud = st.checkbox("Generate Word Cloud")
+    if st.button("Submit & Transcribe Audio"):
         with st.spinner("Processing your audio..."):
             if audio:
                 st.success("Audio processed successfully")  
-                model = whisper.load_model("base")
-                audio_bytes = audio.read()
-                audio_file = BytesIO(audio_bytes)
-                audio_segment = AudioSegment.from_file(audio_file, format="mp3")
-                audio_segment.export(audio_file, format="wav")
-                audio_file.seek(0)
-                audio_array = np.array(audio_segment.get_array_of_samples(), dtype=np.float32) / 32768.0
-                result = model.transcribe(audio_array)                
+                #data = englishTranscription.start_transcription(uploaded_file, tokens)
+                transcriber = aai.Transcriber()
+                data = transcriber.transcribe(audio)
+                #st.write(data.text)
+                if getwordcloud:
+                    wordcloud_plot = generate_word_cloud(data.text)
+                    st.pyplot(wordcloud_plot)
                 st.write("Adding the audio text to the knowledge base")
-                #st.write(result["text"])
-                text_chunks = get_text_chunks(result["text"])
+                text_chunks = get_text_chunks(data.text)
                 vector_store = get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
                 
@@ -138,5 +152,6 @@ def main():
 
     st.write("This is how to setup sercets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
     st.write("This is how to setup sercets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")
+
 if __name__ == "__main__":
     main()

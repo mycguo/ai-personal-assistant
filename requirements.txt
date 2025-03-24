@@ -13,3 +13,12 @@ torch
 openai-whisper
 numpy
 pydub
+python-multipart
+DateTime
+numpy
+pandas
+regex
+yake
+wordcloud
+assemblyai
+matplotlib
