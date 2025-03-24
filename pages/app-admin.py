@@ -8,12 +8,6 @@ from langchain_community.vectorstores import FAISS
 import docx  # Import the python-docx library
 import pandas as pd
 import requests
-import torch
-import whisper  
-import numpy as np
-from io import BytesIO
-from pydub import AudioSegment
-from transcriptionServices import englishTranscription
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import assemblyai as aai
@@ -139,23 +133,22 @@ def main():
     if st.button("Submit & Process Video"):
         with st.spinner("Processing your video..."):
             if video:
-                st.success("Video processed successfully")  
                 # https://www.bannerbear.com/blog/how-to-use-whisper-api-to-transcribe-videos-python-tutorial/
                 bytes_data = video.getvalue()
                 with open(video.name, 'wb') as f:
                     f.write(bytes_data)
-                st.write("File saved successfully!")
+                st.write("Video file saved successfully!")
                 videoClip = VideoFileClip(video.name) 
                 audio = videoClip.audio 
                 audioFile =video.name.split(".")[0] + ".mp3"
                 audio.write_audiofile(audioFile) 
-                #model = whisper.load_model("base")
-                #data = model.transcribe(audio);
                 transcriber = aai.Transcriber()
                 data = transcriber.transcribe(audioFile)
                 st.write("Adding the audio text to the knowledge base")
-                st.write(data)
-                st.write(data.text)
+                #st.write(data)
+                #st.write(data.text)
+                wordcloud_plot = generate_word_cloud(data.text)
+                st.pyplot(wordcloud_plot)
                 text_chunks = get_text_chunks(data.text)
                 vector_store = get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
