@@ -17,6 +17,7 @@ from transcriptionServices import englishTranscription
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import assemblyai as aai
+from moviepy import VideoFileClip
 
 
 #configuring the google api key
@@ -139,13 +140,23 @@ def main():
         with st.spinner("Processing your video..."):
             if video:
                 st.success("Video processed successfully")  
-                model = whisper.load_model("base")
-                video_bytes = video.read()
-                audio = np.frombuffer(video_bytes, np.int16).astype(np.float32) / 32768.0
-                result = model.transcribe(audio)
+                # https://www.bannerbear.com/blog/how-to-use-whisper-api-to-transcribe-videos-python-tutorial/
+                bytes_data = video.getvalue()
+                with open(video.name, 'wb') as f:
+                    f.write(bytes_data)
+                st.write("File saved successfully!")
+                videoClip = VideoFileClip(video.name) 
+                audio = videoClip.audio 
+                audioFile =video.name.split(".")[0] + ".mp3"
+                audio.write_audiofile(audioFile) 
+                #model = whisper.load_model("base")
+                #data = model.transcribe(audio);
+                transcriber = aai.Transcriber()
+                data = transcriber.transcribe(audioFile)
                 st.write("Adding the audio text to the knowledge base")
-                #st.write(result["text"])
-                text_chunks = get_text_chunks(result["text"])
+                st.write(data)
+                st.write(data.text)
+                text_chunks = get_text_chunks(data.text)
                 vector_store = get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
                 st.write("")
