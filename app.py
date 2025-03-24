@@ -41,7 +41,7 @@ def get_prompt_template():
 
 def get_chat_chain():
     prompt_template="""
-    Answer the questions based on my resume honestly
+    Answer the questions based on local konwledge base honestly
 
     Context:\n {context} \n
     Questions: \n {questions} \n
