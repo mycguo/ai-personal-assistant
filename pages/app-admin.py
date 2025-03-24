@@ -19,7 +19,6 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 #tokens from https://www.assemblyai.com/ to transcribe the audio
 tokens = st.secrets["ASSEMBLYAI_API_KEY"]
-st.write(tokens)
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -110,7 +109,6 @@ def main():
 
     st.header("Audio support")
     audio = st.file_uploader("Upload your knowledge base document using Audio", type=["mp3"], accept_multiple_files=False)
-    getwordcloud = st.checkbox("Generate Word Cloud")
     if st.button("Submit & Transcribe Audio"):
         with st.spinner("Processing your audio..."):
             if audio:
@@ -119,9 +117,8 @@ def main():
                 transcriber = aai.Transcriber()
                 data = transcriber.transcribe(audio)
                 #st.write(data.text)
-                if getwordcloud:
-                    wordcloud_plot = generate_word_cloud(data.text)
-                    st.pyplot(wordcloud_plot)
+                wordcloud_plot = generate_word_cloud(data.text)
+                st.pyplot(wordcloud_plot)
                 st.write("Adding the audio text to the knowledge base")
                 text_chunks = get_text_chunks(data.text)
                 vector_store = get_vector_store(text_chunks)
