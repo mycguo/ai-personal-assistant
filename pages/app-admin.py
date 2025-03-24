@@ -113,7 +113,7 @@ def main():
                 audio_array = np.array(audio_segment.get_array_of_samples(), dtype=np.float32) / 32768.0
                 result = model.transcribe(audio_array)                
                 st.write("Adding the audio text to the knowledge base")
-                st.write(result["text"])
+                #st.write(result["text"])
                 text_chunks = get_text_chunks(result["text"])
                 vector_store = get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
@@ -130,7 +130,7 @@ def main():
                 audio = np.frombuffer(video_bytes, np.int16).astype(np.float32) / 32768.0
                 result = model.transcribe(audio)
                 st.write("Adding the audio text to the knowledge base")
-                st.write(result["text"])
+                #st.write(result["text"])
                 text_chunks = get_text_chunks(result["text"])
                 vector_store = get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
