@@ -1,7 +1,7 @@
-# chat-with-charles-resume
-# ask any questions about me
+# personal ai chatbot to chat with your personal knowledge base
 
-## Run it locally
+
+## run it locally 
 
 ```sh
 virtualenv .venv
