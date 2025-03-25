@@ -71,6 +71,9 @@ def main():
     st.title("Knowledge Assistant")
     st.header("Ask questions on your knowledge base")
 
+    # fix the empty vector store issue
+    get_vector_store(get_text_chunks("Loading some documents to build your knowledge base first"))
+
     user_question = st.text_input("Ask me a question")
     if user_question:
         user_input(user_question)

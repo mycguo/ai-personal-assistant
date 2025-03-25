@@ -40,7 +40,7 @@ def get_vector_store(text_chunks):
     try:
         vector_store = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
     except:
-        vector_store = FAISS.from_texts(get_text_chunks("Charles"), embedding=embedding)
+        vector_store = FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
     vector_store.add_texts(text_chunks)
     vector_store.save_local("faiss_index")
     return vector_store
