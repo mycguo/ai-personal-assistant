@@ -36,8 +36,11 @@ def get_text_chunks(text):
 
 def get_vector_store(text_chunks):
     embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.from_texts(text_chunks,embedding=embedding)
-
+    try:
+        vector_store = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
+    except FileNotFoundError:
+        vector_store = FAISS.from_texts([], embedding=embedding)
+    vector_store.add_texts(text_chunks)
     vector_store.save_local("faiss_index")
     return vector_store
 
@@ -62,7 +65,7 @@ def main():
             if pdf_docs:
                 text = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(text)
-                vector_store = get_vector_store(text_chunks)
+                get_vector_store(text_chunks)
                 st.success("Documents processed successfully")
 
     st.header("Adding Word Documents")
@@ -81,7 +84,7 @@ def main():
                 #st.write("Paragraphs:")
                 text = "\n".join(paragraphs)
                 text_chunks = get_text_chunks(text)
-                vector_store = get_vector_store(text_chunks)
+                get_vector_store(text_chunks)
                 st.success("Documents processed successfully")
 
 
@@ -93,7 +96,7 @@ def main():
                 df = pd.read_excel(excel_file)
                 text = df.to_string()
                 text_chunks = get_text_chunks(text)
-                vector_store = get_vector_store(text_chunks)
+                get_vector_store(text_chunks)
                 st.success("Documents processed successfully")
 
     st.header("URL fetcher")
@@ -104,7 +107,7 @@ def main():
                 response = requests.get(url)
                 text = response.text
                 text_chunks = get_text_chunks(text)
-                vector_store = get_vector_store(text_chunks)
+                get_vector_store(text_chunks)
                 st.success("URL processed successfully")
 
     st.header("Audio support")
@@ -121,7 +124,7 @@ def main():
                 st.pyplot(wordcloud_plot)
                 st.write("Adding the audio text to the knowledge base")
                 text_chunks = get_text_chunks(data.text)
-                vector_store = get_vector_store(text_chunks)
+                get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
                 
  
@@ -147,7 +150,7 @@ def main():
                 wordcloud_plot = generate_word_cloud(data.text)
                 st.pyplot(wordcloud_plot)
                 text_chunks = get_text_chunks(data.text)
-                vector_store = get_vector_store(text_chunks)
+                get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
                 st.write("")
 
