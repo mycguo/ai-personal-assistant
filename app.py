@@ -1,7 +1,5 @@
 # UI for asking questions on the knowledge base
 import streamlit as st
-from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
@@ -10,30 +8,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import StuffDocumentsChain, LLMChain  # Updated import
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
+from pages.app_admin import get_vector_store, get_text_chunks
 
 load_dotenv()
 
 genai.configure(api_key=os.getenv("GENAI_API_KEY"))
-
-def get_pdf_text(pdf_docs):
-    text = ""
-    for pdf_doc in pdf_docs:
-        pdf = PdfReader(pdf_doc)
-        for page in pdf.pages:
-            text += page.extract_text()
-    return text
-
-
-def get_text_chunks(text):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=1000)
-    chunks = splitter.split_text(text)
-    return chunks   
-
-def get_vector_store(text_chunks):
-    embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.from_texts(text_chunks,embedding=embedding)
-    vector_store.save_local("faiss_index")
-    return vector_store
 
 
 def get_prompt_template():
@@ -72,7 +51,7 @@ def main():
     st.header("Ask questions on your knowledge base")
 
     # fix the empty vector store issue
-    get_vector_store(get_text_chunks("Loading some documents to build your knowledge base first"))
+    get_vector_store(get_text_chunks("Loading some documents to build your knowledge base"))
 
     user_question = st.text_input("Ask me a question")
     if user_question:

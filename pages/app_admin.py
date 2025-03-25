@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import assemblyai as aai
 from moviepy import VideoFileClip
-import os
 
 
 #configuring the google api key
@@ -39,7 +38,7 @@ def get_vector_store(text_chunks):
     embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     try:
         vector_store = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
-    except:
+    except Exception:
         vector_store = FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
     vector_store.add_texts(text_chunks)
     vector_store.save_local("faiss_index")
