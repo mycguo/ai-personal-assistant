@@ -22,4 +22,3 @@ wordcloud
 assemblyai
 matplotlib
 moviepy
-os
