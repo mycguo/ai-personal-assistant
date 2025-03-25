@@ -10,7 +10,6 @@ python-docx
 pandas
 requests
 torch
-openai-whisper
 numpy
 pydub
 python-multipart
