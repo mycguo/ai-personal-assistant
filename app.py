@@ -5,10 +5,11 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains import StuffDocumentsChain, LLMChain  # Updated import
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 from pages.app_admin import get_vector_store, get_text_chunks
+from langchain.chains.combine_documents import create_stuff_documents_chain
+
 
 load_dotenv()
 
@@ -29,8 +30,7 @@ def get_chat_chain():
 """
     model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
     prompt=PromptTemplate(template=prompt_template, input_variabls=["context","questions"],output_variables=["answers"])
-    llm_chain = LLMChain(llm=model, prompt=prompt)  # Create LLMChain instance
-    chain = StuffDocumentsChain(llm_chain=llm_chain, document_variable_name="context")  # Pass LLMChain instance and specify document_variable_name
+    chain = create_stuff_documents_chain(llm=model, prompt=prompt, document_variable_name="context")
     return chain
 
 def user_input(user_question):
@@ -40,10 +40,10 @@ def user_input(user_question):
 
     chain = get_chat_chain()
 
-    response = chain({"input_documents": docs, "questions": user_question}, return_only_outputs=True)              
+    response = chain.invoke({"context": docs, "questions": user_question})
 
     print(response)
-    st.write("Reply: ",response["output_text"])
+    st.write("Reply: ",response)
 
 
 def main():
