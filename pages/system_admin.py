@@ -1,4 +1,6 @@
 import streamlit as st
+from app import download_faiss_from_s3
+from pages.app_admin import upload_vector_store_to_s3
 
 def login_screen():
     st.header("This is for system admin only. Please login first")
@@ -12,9 +14,18 @@ def main():
         login_screen()
     else:
         st.header(f"Welcome, {st.experimental_user.name}!")
-        st.title("Knowledge Assistant System Admin function")
+        st.title("Knowledge Assistant System Admin")
         st.header("System Admin Only: Danger Zone")
-        st.button("Reset the DB")
+        if st.button("Upload Vector Store to S3"):
+            with st.spinner("Uploading to S3..."):
+                upload_vector_store_to_s3()
+                st.success("Uploaded to S3!")
+
+        if st.button("Download Vector Store from S3"):
+            with st.spinner("Downloading from S3..."):
+                download_faiss_from_s3()
+                st.success("Downloaded file from S3!")
+
         st.button("Log out", on_click=st.logout)
 
 if __name__ == "__main__":
