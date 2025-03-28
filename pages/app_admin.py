@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import assemblyai as aai
 from moviepy import VideoFileClip
+import boto3
+import os
 
 
 #configuring the google api key
@@ -42,6 +44,21 @@ def get_vector_store(text_chunks):
         vector_store = FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
     vector_store.add_texts(text_chunks)
     vector_store.save_local("faiss_index")
+
+    # Correct file paths for FAISS index files
+    faiss_index_file = "faiss_index/index.faiss"
+    faiss_metadata_file = "faiss_index/index.pkl"
+   # Ensure the files exist before uploading
+    if os.path.exists(faiss_index_file) and os.path.exists(faiss_metadata_file):
+        print("FAISS index files found. they are saved correctly.")
+        print(st.secrets["AWS_ACCESS_KEY_ID"])
+        print(st.secrets["BUCKET_NAME"])
+      
+        upload_file_to_s3(faiss_index_file, st.secrets["BUCKET_NAME"], "index.faiss")
+        upload_file_to_s3(faiss_metadata_file, st.secrets["BUCKET_NAME"], "index.pkl")
+    else:
+        print("FAISS index files not found. Ensure they are saved correctly.")
+
     return vector_store
 
 def generate_word_cloud(text):
@@ -51,6 +68,27 @@ def generate_word_cloud(text):
     plt.axis('off')
     plt.tight_layout(pad=0)
     return plt
+
+def upload_file_to_s3(local_file_path, bucket_name, s3_key):
+    """
+    Uploads a file to an S3 bucket.
+
+    :param local_file_path: Path to the local file to upload.
+    :param bucket_name: Name of the S3 bucket.
+    :param s3_key: Key (path) in the S3 bucket where the file will be stored.
+    """
+    s3 = boto3.client(
+        "s3",
+        region_name="us-west-2",
+        aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
+    )
+    try:
+        # Upload the file
+        s3.upload_file(local_file_path, bucket_name, s3_key)
+        print(f"File {local_file_path} uploaded to s3://{bucket_name}/{s3_key}")
+    except Exception as e:
+        print(f"Error uploading file to S3: {e}")
 
 def main():
     st.title("Knowledge Assistant")
