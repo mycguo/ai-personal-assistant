@@ -54,7 +54,7 @@ def load_faiss_from_s3(bucket_name, s3_key, local_file_path, embedding_model):
 
     # Download the FAISS index file from S3
     s3.download_file(st.secrets["BUCKET_NAME"], st.secrets["AWS_ACCESS_KEY_ID"], "faiss_index/index.faiss")
-    s3.download_file(os.st.secrets["BUCKET_NAME"], st.secrets["AWS_ACCESS_KEY_ID"], "faiss_index/index.pkl")
+    s3.download_file(st.secrets["BUCKET_NAME"], st.secrets["AWS_ACCESS_KEY_ID"], "faiss_index/index.pkl")
     print(f"Downloaded FAISS index from s3://{bucket_name}/{s3_key} to {local_file_path}")
 
     # Load the FAISS index locally
