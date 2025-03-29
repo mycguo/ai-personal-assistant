@@ -10,10 +10,24 @@ from pages.app_admin import get_vector_store, get_text_chunks
 from langchain.chains.combine_documents import create_stuff_documents_chain
 import boto3
 
+from langsmith.wrappers import wrap_anthropic
+from langsmith import traceable
+from langsmith import Client
+from pathlib import Path
+
+from langchain_community.chat_models import ChatOpenAI
+from langsmith import utils
+
+
+print(st.secrets["OPENAI_API_KEY"])
+llm = ChatOpenAI(openai_api_key=st.secrets["OPENAI_API_KEY"], model="gpt-4o", temperature=0.3)
+print(utils.tracing_is_enabled)
+#llm.invoke("Hello, world!")
+
 
 genai.configure(api_key=os.getenv("GENAI_API_KEY"))
 
-
+client = Client();
 
 def get_prompt_template():
     return PromptTemplate()

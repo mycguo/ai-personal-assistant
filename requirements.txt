@@ -24,3 +24,5 @@ matplotlib
 moviepy
 Authlib
 boto3
+langchain-openai
+openai
