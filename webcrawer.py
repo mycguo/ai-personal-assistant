@@ -3,6 +3,7 @@ import argparse
 from bs4 import BeautifulSoup
 import re
 from urllib.parse import urljoin
+import streamlit as st
 
 class WebCrawler:
     def __init__(self, url, max_depth):
@@ -14,10 +15,7 @@ class WebCrawler:
         return self.crawl(url, depth=0)
 
     def crawl(self, url, depth):
-        print(f"crawling {url} with depth {depth}")
-        headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
         self.subdomains.add(url)
        
         try:
@@ -45,13 +43,13 @@ class WebCrawler:
                                 self.crawl(full_link, depth)
 
 
-        self.print_results()
         return self.subdomains
 
     def print_results(self):
+        st.write("All the URLs porcessed")
         if self.subdomains:
             for subdomain in self.subdomains:
-                print(f"[+] Subdomains : {subdomain}")
+                st.write(f"[+]: {subdomain}")
 
 def get_args():
     parser = argparse.ArgumentParser()

@@ -276,8 +276,8 @@ def main():
         with st.spinner("Processing your URL..."):
             crawler = WebCrawler(url = url, max_depth=max_depth)     
             urls = crawler.start_crawling(url=url)
-            print("URL returned")
-            print(urls)
+            with st.expander("URL processed and added"):
+                st.text_area("URLs", "\n".join(list(urls)))
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
