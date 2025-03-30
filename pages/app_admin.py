@@ -16,6 +16,7 @@ import os
 from langchain_community.document_loaders import WebBaseLoader
 import requests
 from bs4 import BeautifulSoup
+from webcrawer import WebCrawler
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -156,21 +157,25 @@ def main():
 
     st.header("URL fetcher")
     url = st.text_input("Enter the URL")
+    max_depth = st.number_input("Enter the depth you want to crawel, default is 1, max_value is 3", value=1, max_value=3)
     if st.button("Submit & Process URL"):
         with st.spinner("Processing your URL..."):
-            urls = get_urls(url)
+            crawler = WebCrawler(url = url, max_depth=max_depth)     
+            urls = crawler.start_crawling(url=url)
+            print("URL returned")
             print(urls)
-            for url in urls:
-                loader = WebBaseLoader(
-                    web_path = url,
+            
+
+            loader = WebBaseLoader(
+                    web_path = list(urls),
                     continue_on_failure = True,
-                    show_progress = True
-                )
-                for doc in loader.load():
-                    print(doc.page_content[:100])
-                    st.write("Processing link -> ", doc.metadata["source"])
-                    text_chunks = get_text_chunks(doc.page_content)
-                    get_vector_store(text_chunks)
+                    show_progress = True)
+            all_texts = [doc.page_content for doc in loader.load()]
+            text = "\n".join(all_texts)
+            wordcloud_plot = generate_word_cloud(text)
+            st.pyplot(wordcloud_plot)
+            text_chunks = get_text_chunks(text)
+            get_vector_store(text_chunks)
             st.success("URL processed successfully")
 
     st.header("Audio support")
