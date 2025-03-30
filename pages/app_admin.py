@@ -218,7 +218,7 @@ def main():
     st.header("Adding Word or Text Documents")
     word_docs = st.file_uploader("Upload your knowledge base document", type=["docx", "txt"], accept_multiple_files=True)
     if st.button("Submit & Process Documents"):
-        with st.spinner("Processing your word documents..."):
+        with st.spinner("Processing your documents..."):
             if word_docs:
                 all_files = []
                 for doc in word_docs:
