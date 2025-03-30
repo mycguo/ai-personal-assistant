@@ -213,6 +213,8 @@ def main():
                 text = get_pdf_text(pdf_docs)
                 text_chunks = get_text_chunks(text)
                 get_vector_store(text_chunks)
+                wordcloud_plot = generate_word_cloud(text)
+                st.pyplot(wordcloud_plot)
                 st.success("Documents processed successfully")
 
     st.header("Adding Word or Text Documents")
