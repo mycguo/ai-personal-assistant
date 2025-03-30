@@ -18,7 +18,6 @@ import requests
 from bs4 import BeautifulSoup
 from webcrawer import WebCrawler
 import yt_dlp as youtube_dl
-import tools.uploadfile as upload
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -216,41 +215,36 @@ def main():
                 get_vector_store(text_chunks)
                 st.success("Documents processed successfully")
 
-    st.header("Adding Word Documents")
-    word_docs = st.file_uploader("Upload your knowledge base document", type=["pdf", "docx", "txt"], accept_multiple_files=True)
-    if st.button("Submit & Process Word"):
+    st.header("Adding Word or Text Documents")
+    word_docs = st.file_uploader("Upload your knowledge base document", type=["docx", "txt"], accept_multiple_files=True)
+    if st.button("Submit & Process Documents"):
         with st.spinner("Processing your word documents..."):
             if word_docs:
                 all_files = []
                 for doc in word_docs:
-                    try:
-                        file = upload.read_file(doc)
-                        st.write(f"Processing file {file.name}")
-                        all_files.append(file)
-                    except Exception as e:
-                        print(f"Exception while reading file {e}")
-
-                vector_store = get_vector_store()
-                vector_store.add_documents(list(all_files))
-                vector_store.save_local("faiss_index")                    
-
-                text = ""
-                for pdf_doc in pdf_docs:
-                    pdf = PdfReader(pdf_doc)
-                    for page in pdf.pages:
-                        text += page.extract_text()
-                # Open the file using docx.Document
-                try:
-                    doc = docx.Document(word_docs)
-                except Exception as e:
-                    st.error(f"Error opening the document: {e}")
-                    st.stop()
-                # Example: Extract all paragraphs
-                paragraphs = [p.text for p in doc.paragraphs]
-                #st.write("Paragraphs:")
-                text = "\n".join(paragraphs)
-                text_chunks = get_text_chunks(text)
+                    st.write(f"Processing {doc.name} ... ")
+                    if doc.name.lower().endswith(".docx"):
+                        # Open the file using docx.Document
+                        try:
+                            doc = docx.Document(doc)
+                        except Exception as e:
+                            st.error(f"Error opening the document: {e}")
+                            st.stop()
+                        # Example: Extract all paragraphs
+                        paragraphs = [p.text for p in doc.paragraphs]
+                        #st.write("Paragraphs:")
+                        text = "\n".join(paragraphs)
+                        all_files.append(text)
+                    elif doc.name.lower().endswith(".txt"):
+                        text = doc.read().decode("utf-8", errors="replace")
+                        all_files.append(text);
+                    else:
+                        raise NotImplementedError(f"File type {doc.name.split('.')[-1]} not supported")
+                all_texts = "\n".join(all_files)
+                text_chunks = get_text_chunks(all_texts)
                 get_vector_store(text_chunks)
+                wordcloud_plot = generate_word_cloud(all_texts)
+                st.pyplot(wordcloud_plot)
                 st.success("Documents processed successfully")
 
 

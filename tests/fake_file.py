@@ -1,10 +1,6 @@
-from io import BytesIO
-from tools.uploadfile import File
-
-
-class FakeFile(File):
+class FakeFile():
     """A fake file for testing purposes"""
 
     @classmethod
-    def from_bytes(cls, file: BytesIO) -> "FakeFile":
+    def from_bytes(cls) -> "FakeFile":
         return NotImplemented
