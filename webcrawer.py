@@ -15,10 +15,13 @@ class WebCrawler:
 
     def crawl(self, url, depth):
         print(f"crawling {url} with depth {depth}")
+        headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         self.subdomains.add(url)
        
         try:
-            response = requests.get(url, timeout=3, allow_redirects=True)
+            response = requests.get(url, headers=headers, timeout=3, allow_redirects=True)
             soup = BeautifulSoup(response.text, 'html.parser')
         except requests.exceptions.RequestException as err:
             print(f"[-] An error occurred: {err}")

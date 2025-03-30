@@ -18,9 +18,11 @@ import requests
 from bs4 import BeautifulSoup
 from webcrawer import WebCrawler
 import yt_dlp as youtube_dl
+import tools.uploadfile as upload
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
 #tokens from https://www.assemblyai.com/ to transcribe the audio
 tokens = st.secrets["ASSEMBLYAI_API_KEY"]
@@ -122,7 +124,6 @@ def get_text_chunks(text):
     return chunks   
 
 def get_vector_store(text_chunks):
-    embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     try:
         vector_store = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
     except Exception:
@@ -130,6 +131,14 @@ def get_vector_store(text_chunks):
     vector_store.add_texts(text_chunks)
     vector_store.save_local("faiss_index")
     return vector_store
+
+def get_current_store():
+    embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    try:
+        vector_store = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
+    except Exception:
+        vector_store = FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
+    return vector_store     
 
 def generate_word_cloud(text):
     wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
@@ -208,10 +217,28 @@ def main():
                 st.success("Documents processed successfully")
 
     st.header("Adding Word Documents")
-    word_docs = st.file_uploader("Upload your knowledge base document", type=["docx"], accept_multiple_files=False)
+    word_docs = st.file_uploader("Upload your knowledge base document", type=["pdf", "docx", "txt"], accept_multiple_files=True)
     if st.button("Submit & Process Word"):
         with st.spinner("Processing your word documents..."):
             if word_docs:
+                all_files = []
+                for doc in word_docs:
+                    try:
+                        file = upload.read_file(doc)
+                        st.write(f"Processing file {file.name}")
+                        all_files.append(file)
+                    except Exception as e:
+                        print(f"Exception while reading file {e}")
+
+                vector_store = get_vector_store()
+                vector_store.add_documents(list(all_files))
+                vector_store.save_local("faiss_index")                    
+
+                text = ""
+                for pdf_doc in pdf_docs:
+                    pdf = PdfReader(pdf_doc)
+                    for page in pdf.pages:
+                        text += page.extract_text()
                 # Open the file using docx.Document
                 try:
                     doc = docx.Document(word_docs)
@@ -247,7 +274,7 @@ def main():
             urls = crawler.start_crawling(url=url)
             print("URL returned")
             print(urls)
-            
+
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "Accept-Language": "en-US,en;q=0.9",
@@ -268,7 +295,7 @@ def main():
             get_vector_store(text_chunks)
             st.success("URL processed successfully")
 
-    st.header("Youtube Video Transcirbe")
+    st.header("Youtube Video Transcirbe [Note: only work locally because ffmpeg is not avaialbe in the server]")
     link = st.text_input('Enter your YouTube video link', on_change=refresh_state)
     if link:
         st.video(link)
