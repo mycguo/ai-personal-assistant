@@ -291,7 +291,8 @@ def main():
             get_vector_store(text_chunks)
             st.success("URL processed successfully")
 
-    st.header("Youtube Video Transcirbe [Note: only work locally because ffmpeg is not avaialbe in the server]")
+    st.header("Youtube Video Transcirbe")
+    st.write("[Note: only work locally because ffmpeg is not avaialbe in the server]")
     link = st.text_input('Enter your YouTube video link', on_change=refresh_state)
     if link:
         st.video(link)
