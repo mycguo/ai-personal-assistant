@@ -17,12 +17,96 @@ from langchain_community.document_loaders import WebBaseLoader
 import requests
 from bs4 import BeautifulSoup
 from webcrawer import WebCrawler
+import yt_dlp as youtube_dl
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 #tokens from https://www.assemblyai.com/ to transcribe the audio
 tokens = st.secrets["ASSEMBLYAI_API_KEY"]
+
+if 'status' not in st.session_state:
+    st.session_state['status'] = 'submitted'
+
+ydl_opts = {
+   'format': 'bestaudio/best',
+   'postprocessors': [{
+       'key': 'FFmpegExtractAudio',
+       'preferredcodec': 'mp3',
+       'preferredquality': '192',
+   }],
+   'ffmpeg-location': './',
+   'outtmpl': "./%(id)s.%(ext)s",
+}
+
+transcript_endpoint = "https://api.assemblyai.com/v2/transcript"
+upload_endpoint = 'https://api.assemblyai.com/v2/upload'
+
+headers_auth_only = {'authorization': tokens}
+headers = {
+   "authorization": tokens,
+   "content-type": "application/json"
+}
+CHUNK_SIZE = 5242880
+
+@st.cache_data
+def transcribe_from_link(link, categories: bool):
+	_id = link.strip()
+
+	def get_vid(_id):
+		with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+			return ydl.extract_info(_id)
+
+	# download the audio of the YouTube video locally
+	meta = get_vid(_id)
+	save_location = meta['id'] + ".mp3"
+
+	print('Saved mp3 to', save_location)
+
+
+	def read_file(filename):
+		with open(filename, 'rb') as _file:
+			while True:
+				data = _file.read(CHUNK_SIZE)
+				if not data:
+					break
+				yield data
+
+
+	# upload audio file to AssemblyAI
+	upload_response = requests.post(
+		upload_endpoint,
+		headers=headers_auth_only, data=read_file(save_location)
+	)
+
+	audio_url = upload_response.json()['upload_url']
+	print('Uploaded to', audio_url)
+
+	# start the transcription of the audio file
+	transcript_request = {
+		'audio_url': audio_url,
+		'iab_categories': 'True' if categories else 'False',
+	}
+
+	transcript_response = requests.post(transcript_endpoint, json=transcript_request, headers=headers)
+
+	# this is the id of the file that is being transcribed in the AssemblyAI servers
+	# we will use this id to access the completed transcription
+	transcript_id = transcript_response.json()['id']
+	polling_endpoint = transcript_endpoint + "/" + transcript_id
+
+	print("Transcribing at", polling_endpoint)
+
+	return polling_endpoint
+
+def get_status(polling_endpoint):
+	polling_response = requests.get(polling_endpoint, headers=headers)
+	st.session_state['status'] = polling_response.json()['status']
+
+def refresh_state():
+	st.session_state['status'] = 'submitted'
+
+
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -178,6 +262,28 @@ def main():
             get_vector_store(text_chunks)
             st.success("URL processed successfully")
 
+    st.header("Youtube Video Transcirbe")
+    link = st.text_input('Enter your YouTube video link', on_change=refresh_state)
+    st.video(link)
+    st.text("The transcription is " + st.session_state['status'])
+    polling_endpoint = transcribe_from_link(link, False)
+    st.button('check_status', on_click=get_status, args=(polling_endpoint,))
+    transcript=''
+    if st.session_state['status']=='completed':
+        polling_response = requests.get(polling_endpoint, headers=headers)
+        transcript = polling_response.json()['text']
+
+        with st.expander("click to read the content:"):
+            st.text_area(transcript)
+        wordcloud_plot = generate_word_cloud(transcript)
+        st.pyplot(wordcloud_plot)
+        st.write("Adding the audio text to the knowledge base")
+        text_chunks = get_text_chunks(transcript)
+        get_vector_store(text_chunks)
+        st.success("Text from Youtube video added to knowledge base successfully")
+                
+    
+    
     st.header("Audio support")
     audio = st.file_uploader("Upload your knowledge base document using Audio", type=["mp3"], accept_multiple_files=False)
     if st.button("Submit & Transcribe Audio"):

@@ -25,3 +25,4 @@ moviepy
 Authlib
 boto3
 bs4
+yt_dlp
