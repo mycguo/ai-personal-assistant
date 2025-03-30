@@ -14,7 +14,6 @@ import boto3
 genai.configure(api_key=os.getenv("GENAI_API_KEY"))
 
 
-
 def get_prompt_template():
     return PromptTemplate()
 
@@ -51,7 +50,7 @@ def download_faiss_from_s3():
         aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
     )
-    bucket_name = st.secrets["BUCKET_NAME"];
+    bucket_name = st.secrets["BUCKET_NAME"]
     print(bucket_name)
     # Download the FAISS index file from S3
     s3.download_file(bucket_name, "index.faiss", "index.faiss")

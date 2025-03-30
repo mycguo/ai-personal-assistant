@@ -7,14 +7,15 @@ import google.generativeai as genai
 from langchain_community.vectorstores import FAISS
 import docx  # Import the python-docx library
 import pandas as pd
-import requests
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 import assemblyai as aai
 from moviepy import VideoFileClip
 import boto3
 import os
-
+from langchain_community.document_loaders import WebBaseLoader
+import requests
+from bs4 import BeautifulSoup
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -85,6 +86,26 @@ def upload_file_to_s3(local_file_path, bucket_name, s3_key):
         print(f"File {local_file_path} uploaded to s3://{bucket_name}/{s3_key}")
     except Exception as e:
         print(f"Error uploading file to S3: {e}")
+   
+def get_urls(url): 
+    urls=[] 
+    # getting the request from url 
+    r = requests.get(url)      
+    # converting the text 
+    print(r.text)
+    s = BeautifulSoup(r.text,"html.parser")    
+    for i in s.find_all("a"):    
+        print(i)     
+        if 'href' in i.attrs:   
+            href = i.attrs['href']            
+            if href.startswith("/"):            
+                site = url+href 
+                print(site)               
+                if site not in  urls: 
+                    urls.append(site)  
+                    print(url) 
+    return urls
+
 
 def main():
     st.title("Knowledge Assistant")
@@ -137,12 +158,20 @@ def main():
     url = st.text_input("Enter the URL")
     if st.button("Submit & Process URL"):
         with st.spinner("Processing your URL..."):
-            if url:
-                response = requests.get(url)
-                text = response.text
-                text_chunks = get_text_chunks(text)
-                get_vector_store(text_chunks)
-                st.success("URL processed successfully")
+            urls = get_urls(url)
+            print(urls)
+            for url in urls:
+                loader = WebBaseLoader(
+                    web_path = url,
+                    continue_on_failure = True,
+                    show_progress = True
+                )
+                for doc in loader.load():
+                    print(doc.page_content[:100])
+                    st.write("Processing link -> ", doc.metadata["source"])
+                    text_chunks = get_text_chunks(doc.page_content)
+                    get_vector_store(text_chunks)
+            st.success("URL processed successfully")
 
     st.header("Audio support")
     audio = st.file_uploader("Upload your knowledge base document using Audio", type=["mp3"], accept_multiple_files=False)
