@@ -29,6 +29,11 @@ tokens = st.secrets["ASSEMBLYAI_API_KEY"]
 if 'status' not in st.session_state:
     st.session_state['status'] = 'submitted'
 
+session = requests.Session()
+session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+})
+
 ydl_opts = {
    'format': 'bestaudio/best',
    'postprocessors': [{
@@ -181,10 +186,13 @@ def upload_file_to_s3(local_file_path, bucket_name, s3_key):
    
 def get_urls(url): 
     urls=[] 
-    # getting the request from url 
-    r = requests.get(url)      
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    # Getting the request from the URL
+    r = requests.get(url, headers=headers)       
     # converting the text 
-    print(r.text)
+    print(f"Processing url {url}")
     s = BeautifulSoup(r.text,"html.parser")    
     for i in s.find_all("a"):    
         print(i)     
@@ -202,7 +210,7 @@ def get_urls(url):
 def main():
     st.title("Knowledge Assistant")
     st.header("Adding Documents to your knowledge base")
-    st.write("Upload your knowledge base documents to get started")
+    st.write("Upload some documents to get started")
 
    
     st.header("Adding PDF Documents")
@@ -316,7 +324,7 @@ def main():
     
     
     st.header("Audio support")
-    audio = st.file_uploader("Upload your knowledge base document using Audio", type=["mp3"], accept_multiple_files=False)
+    audio = st.file_uploader("Update your knowledge base using Audio", type=["mp3"], accept_multiple_files=False)
     if st.button("Submit & Transcribe Audio"):
         with st.spinner("Processing your audio..."):
             if audio:
@@ -334,7 +342,7 @@ def main():
                 
  
     st.header("Video support")
-    video = st.file_uploader("Upload your knowledge base document using Video", type=["mp4"], accept_multiple_files=False)
+    video = st.file_uploader("Update your knowledge base using Video", type=["mp4"], accept_multiple_files=False)
     if st.button("Submit & Process Video"):
         with st.spinner("Processing your video..."):
             if video:
