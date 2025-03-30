@@ -61,8 +61,7 @@ def transcribe_from_link(link, categories: bool):
 	meta = get_vid(_id)
 	save_location = meta['id'] + ".mp3"
 
-	print('Saved mp3 to', save_location)
-
+	st.write('Saved mp3 to', save_location)
 
 	def read_file(filename):
 		with open(filename, 'rb') as _file:
@@ -264,24 +263,25 @@ def main():
 
     st.header("Youtube Video Transcirbe")
     link = st.text_input('Enter your YouTube video link', on_change=refresh_state)
-    st.video(link)
-    st.text("The transcription is " + st.session_state['status'])
-    polling_endpoint = transcribe_from_link(link, False)
-    st.button('check_status', on_click=get_status, args=(polling_endpoint,))
-    transcript=''
-    if st.session_state['status']=='completed':
-        polling_response = requests.get(polling_endpoint, headers=headers)
-        transcript = polling_response.json()['text']
+    if link:
+        st.video(link)
+        st.text("The transcription is " + st.session_state['status'])
+        polling_endpoint = transcribe_from_link(link, False)
+        st.button('check_status', on_click=get_status, args=(polling_endpoint,))
+        transcript=''
+        if st.session_state['status']=='completed':
+            polling_response = requests.get(polling_endpoint, headers=headers)
+            transcript = polling_response.json()['text']
 
-        with st.expander("click to read the content:"):
-            st.text_area(transcript)
-        wordcloud_plot = generate_word_cloud(transcript)
-        st.pyplot(wordcloud_plot)
-        st.write("Adding the audio text to the knowledge base")
-        text_chunks = get_text_chunks(transcript)
-        get_vector_store(text_chunks)
-        st.success("Text from Youtube video added to knowledge base successfully")
-                
+            with st.expander("click to read the content:"):
+                st.text_area(transcript)
+            wordcloud_plot = generate_word_cloud(transcript)
+            st.pyplot(wordcloud_plot)
+            st.write("Adding the audio text to the knowledge base")
+            text_chunks = get_text_chunks(transcript)
+            get_vector_store(text_chunks)
+            st.success("Text from Youtube video added to knowledge base successfully")
+                    
     
     
     st.header("Audio support")
