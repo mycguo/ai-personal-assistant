@@ -29,3 +29,5 @@ yt_dlp
 docx2txt
 fitz
 pytest
+langchain-nvidia-ai-endpoints
+langchain-deepseek-official

@@ -9,10 +9,13 @@ from langchain.prompts import PromptTemplate
 from pages.app_admin import get_vector_store, get_text_chunks
 from langchain.chains.combine_documents import create_stuff_documents_chain
 import boto3
+from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
 
 genai.configure(api_key=os.getenv("GENAI_API_KEY"))
+os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
+nvidia_api_key = st.secrets["NVIDIA_API_KEY"]
 
 def get_prompt_template():
     return PromptTemplate()
@@ -26,7 +29,14 @@ def get_chat_chain():
 
     Answers:
 """
-    model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
+    #model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
+    model = ChatNVIDIA(
+        model="deepseek-ai/deepseek-r1",
+        api_key=nvidia_api_key,
+        temperature=0.7,
+        top_p=0.8,
+        max_tokens=4096
+    )
     prompt=PromptTemplate(template=prompt_template, input_variabls=["context","questions"],output_variables=["answers"])
     chain = create_stuff_documents_chain(llm=model, prompt=prompt, document_variable_name="context")
     return chain
