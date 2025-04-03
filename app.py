@@ -55,6 +55,28 @@ def user_input(user_question):
     print(response)
     st.write("Reply: ",response)
 
+
+def download_s3_bucket(bucket_name, download_dir):
+    s3 = boto3.client('s3')
+    
+    # Ensure the download directory exists
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
+    
+    # Pagination in case the bucket has many objects
+    paginator = s3.get_paginator('list_objects_v2')
+    for page in paginator.paginate(Bucket=bucket_name):
+        for obj in page.get('Contents', []):
+            key = obj['Key']
+            local_file_path = os.path.join(download_dir, key)
+            
+            # Create local directories if they don't exist
+            if not os.path.exists(os.path.dirname(local_file_path)):
+                os.makedirs(os.path.dirname(local_file_path))
+                
+            print(f"Downloading {key} to {local_file_path}")
+            s3.download_file(bucket_name, key, local_file_path)
+
 def download_faiss_from_s3():
     s3 = boto3.client(
         "s3",
