@@ -29,14 +29,16 @@ def get_chat_chain():
 
     Answers:
 """
-    #model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
-    model = ChatNVIDIA(
-        model="deepseek-ai/deepseek-r1",
-        api_key=nvidia_api_key,
-        temperature=0.7,
-        top_p=0.8,
-        max_tokens=4096
-    )
+    model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
+    # This is too slow
+    #model = ChatNVIDIA(
+    #    model="deepseek-ai/deepseek-r1",
+    #    api_key=nvidia_api_key,
+    #    temperature=0.7,
+    #    top_p=0.8,
+    #    max_tokens=4096
+    #)
+    #
     prompt=PromptTemplate(template=prompt_template, input_variabls=["context","questions"],output_variables=["answers"])
     chain = create_stuff_documents_chain(llm=model, prompt=prompt, document_variable_name="context")
     return chain
@@ -68,15 +70,29 @@ def download_faiss_from_s3():
     print(f"Downloaded FAISS index from s3://${bucket_name} to local directory")
 
 def main():
-    st.title("Knowledge Assistant")
+    st.title("AI Knowledge Assistant")
     st.header("Ask questions on your knowledge base")
 
     # fix the empty vector store issue
     get_vector_store(get_text_chunks("Loading some documents to build your knowledge base"))
 
-    user_question = st.text_input("Ask me a question")
+    user_question = st.text_input("Ask me a question like: 'tell me about Charles?' or just 'hello' ")
     if user_question:
         user_input(user_question)
+    
+    
+    st.markdown("<div style='height:300px;'></div>", unsafe_allow_html=True)
+    st.markdown(""" \n \n \n \n \n \n \n\n\n\n\n\n
+        # Footnote on tech stack
+        web framework: https://streamlit.io/ \n
+        LLM model: "deepseek-ai/deepseek-r1" \n
+        vector store: FAISS (Facebook AI Similarity Search) \n
+        Embeddings model: GoogleGenerativeAIEmbeddings(model="models/embedding-001") \n
+        LangChain: Connect LLMs for Retrieval-Augmented Generation (RAG), memory, chaining and reasoning. \n
+        PyPDF2 and docx: for importing PDF and Word \n
+        audio: assemblyai https://www.assemblyai.com/ \n
+        Video: moviepy https://zulko.github.io/moviepy/ \n
+    """)    
 
 if __name__ == "__main__":
     main()
