@@ -247,7 +247,6 @@ def plot_cost():
 
 def main():
     st.title("Showing Cost of the System")
-    st.header("Cost of the last 30 days")
     plot_cost()
 
 if __name__ == "__main__":
