@@ -163,7 +163,7 @@ def plot_cost():
         # Display the plot using Streamlit
         st.pyplot(fig)
     else:
-        st.warning("No data available to plot.")
+        st.warning("No data available to plot for this time period.")
 
 
     # Calculate start time: n days ago from now
