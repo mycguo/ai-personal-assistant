@@ -115,11 +115,38 @@ def refresh_state():
 
 def get_pdf_text(pdf_docs):
     text = ""
+    metadata_list = []
     for pdf_doc in pdf_docs:
         pdf = PdfReader(pdf_doc)
+        # Get document metadata
+        doc_info = pdf.metadata
+        metadata = {
+            'filename': pdf_doc.name,
+            'num_pages': len(pdf.pages),
+            'author': doc_info.get('/Author', 'N/A'),
+            'title': doc_info.get('/Title', 'N/A'),
+            'subject': doc_info.get('/Subject', 'N/A'),
+            'creator': doc_info.get('/Creator', 'N/A'),
+            'producer': doc_info.get('/Producer', 'N/A')
+        }
+        metadata_list.append(metadata)
+        
+        # Add metadata to the text content
+        text += f"\n\nDocument Metadata:\n"
+        text += f"Filename: {metadata['filename']}\n"
+        text += f"Number of pages: {metadata['num_pages']}\n"
+        text += f"Author: {metadata['author']}\n"
+        text += f"Title: {metadata['title']}\n"
+        text += f"Subject: {metadata['subject']}\n"
+        text += f"Creator: {metadata['creator']}\n"
+        text += f"Producer: {metadata['producer']}\n"
+        text += f"\nDocument Content:\n"
+        
+        # Extract text from each page
         for page in pdf.pages:
             text += page.extract_text()
-    return text
+    
+    return text, metadata_list
 
 
 def get_text_chunks(text):
@@ -218,7 +245,18 @@ def main():
     if st.button("Submit & Process"):
         with st.spinner("Processing your PDF documents..."):
             if pdf_docs:
-                text = get_pdf_text(pdf_docs)
+                text, metadata_list = get_pdf_text(pdf_docs)
+                
+                # Display metadata for each PDF
+                for metadata in metadata_list:
+                    with st.expander(f"Metadata for {metadata['filename']}"):
+                        st.write(f"Number of pages: {metadata['num_pages']}")
+                        st.write(f"Author: {metadata['author']}")
+                        st.write(f"Title: {metadata['title']}")
+                        st.write(f"Subject: {metadata['subject']}")
+                        st.write(f"Creator: {metadata['creator']}")
+                        st.write(f"Producer: {metadata['producer']}")
+                
                 text_chunks = get_text_chunks(text)
                 get_vector_store(text_chunks)
                 wordcloud_plot = generate_word_cloud(text)
@@ -236,18 +274,66 @@ def main():
                     if doc.name.lower().endswith(".docx"):
                         # Open the file using docx.Document
                         try:
-                            doc = docx.Document(doc)
+                            docx_file = docx.Document(doc)
+                            # Get document metadata
+                            core_properties = docx_file.core_properties
+                            metadata = {
+                                'filename': doc.name,
+                                'author': core_properties.author or 'N/A',
+                                'title': core_properties.title or 'N/A',
+                                'subject': core_properties.subject or 'N/A',
+                                'created': str(core_properties.created) if core_properties.created else 'N/A',
+                                'modified': str(core_properties.modified) if core_properties.modified else 'N/A',
+                                'last_modified_by': core_properties.last_modified_by or 'N/A'
+                            }
+                            
+                            # Add metadata to the text content
+                            text = f"\n\nDocument Metadata:\n"
+                            text += f"Filename: {metadata['filename']}\n"
+                            text += f"Author: {metadata['author']}\n"
+                            text += f"Title: {metadata['title']}\n"
+                            text += f"Subject: {metadata['subject']}\n"
+                            text += f"Created: {metadata['created']}\n"
+                            text += f"Modified: {metadata['modified']}\n"
+                            text += f"Last Modified By: {metadata['last_modified_by']}\n"
+                            text += f"\nDocument Content:\n"
+                            
+                            # Add document content
+                            paragraphs = [p.text for p in docx_file.paragraphs]
+                            text += "\n".join(paragraphs)
+                            all_files.append(text)
+                            
+                            # Display metadata in expander
+                            with st.expander(f"Metadata for {metadata['filename']}"):
+                                for key, value in metadata.items():
+                                    st.write(f"{key.replace('_', ' ').title()}: {value}")
+                                    
                         except Exception as e:
                             st.error(f"Error opening the document: {e}")
                             st.stop()
-                        # Example: Extract all paragraphs
-                        paragraphs = [p.text for p in doc.paragraphs]
-                        #st.write("Paragraphs:")
-                        text = "\n".join(paragraphs)
-                        all_files.append(text)
                     elif doc.name.lower().endswith(".txt"):
-                        text = doc.read().decode("utf-8", errors="replace")
-                        all_files.append(text);
+                        # For text files, add basic metadata
+                        metadata = {
+                            'filename': doc.name,
+                            'type': 'Text File',
+                            'size': f"{len(doc.getvalue())} bytes"
+                        }
+                        
+                        # Add metadata to the text content
+                        text = f"\n\nDocument Metadata:\n"
+                        text += f"Filename: {metadata['filename']}\n"
+                        text += f"Type: {metadata['type']}\n"
+                        text += f"Size: {metadata['size']}\n"
+                        text += f"\nDocument Content:\n"
+                        
+                        # Add document content
+                        text += doc.read().decode("utf-8", errors="replace")
+                        all_files.append(text)
+                        
+                        # Display metadata in expander
+                        with st.expander(f"Metadata for {metadata['filename']}"):
+                            for key, value in metadata.items():
+                                st.write(f"{key.replace('_', ' ').title()}: {value}")
                     else:
                         raise NotImplementedError(f"File type {doc.name.split('.')[-1]} not supported")
                 all_texts = "\n".join(all_files)
@@ -263,8 +349,39 @@ def main():
     if st.button("Submit & Process Excel"):
         with st.spinner("Processing your excel documents..."):
             if excel_file:
+                # Read Excel file
                 df = pd.read_excel(excel_file)
-                text = df.to_string()
+                
+                # Get Excel metadata
+                metadata = {
+                    'filename': excel_file.name,
+                    'type': 'Excel File',
+                    'size': f"{len(excel_file.getvalue())} bytes",
+                    'sheets': len(df.sheet_names) if hasattr(df, 'sheet_names') else 1,
+                    'rows': len(df),
+                    'columns': len(df.columns),
+                    'column_names': ', '.join(df.columns.tolist())
+                }
+                
+                # Add metadata to the text content
+                text = f"\n\nDocument Metadata:\n"
+                text += f"Filename: {metadata['filename']}\n"
+                text += f"Type: {metadata['type']}\n"
+                text += f"Size: {metadata['size']}\n"
+                text += f"Number of Sheets: {metadata['sheets']}\n"
+                text += f"Number of Rows: {metadata['rows']}\n"
+                text += f"Number of Columns: {metadata['columns']}\n"
+                text += f"Column Names: {metadata['column_names']}\n"
+                text += f"\nDocument Content:\n"
+                
+                # Add Excel content
+                text += df.to_string()
+                
+                # Display metadata in expander
+                with st.expander(f"Metadata for {metadata['filename']}"):
+                    for key, value in metadata.items():
+                        st.write(f"{key.replace('_', ' ').title()}: {value}")
+                
                 text_chunks = get_text_chunks(text)
                 get_vector_store(text_chunks)
                 st.success("Documents processed successfully")
@@ -297,30 +414,7 @@ def main():
             st.pyplot(wordcloud_plot)
             text_chunks = get_text_chunks(text)
             get_vector_store(text_chunks)
-            st.success("URL processed successfully")
-
-    st.header("Youtube Video Transcirbe")
-    st.write("[Note: only work locally because ffmpeg is not avaialbe in the server]")
-    link = st.text_input('Enter your YouTube video link', on_change=refresh_state)
-    if link:
-        st.video(link)
-        st.text("The transcription is " + st.session_state['status'])
-        polling_endpoint = transcribe_from_link(link, False)
-        st.button('check_status', on_click=get_status, args=(polling_endpoint,))
-        transcript=''
-        if st.session_state['status']=='completed':
-            polling_response = requests.get(polling_endpoint, headers=headers)
-            transcript = polling_response.json()['text']
-
-            with st.expander("click to read the content:"):
-                st.text_area(transcript)
-            wordcloud_plot = generate_word_cloud(transcript)
-            st.pyplot(wordcloud_plot)
-            st.write("Adding the audio text to the knowledge base")
-            text_chunks = get_text_chunks(transcript)
-            get_vector_store(text_chunks)
-            st.success("Text from Youtube video added to knowledge base successfully")
-                    
+            st.success("URL processed successfully")         
     
     
     st.header("Audio support")
@@ -332,7 +426,8 @@ def main():
                 #data = englishTranscription.start_transcription(uploaded_file, tokens)
                 transcriber = aai.Transcriber()
                 data = transcriber.transcribe(audio)
-                #st.write(data.text)
+                with st.expander("View Transcription", expanded=False):
+                    st.text_area("Transcription", data.text, height=300)
                 wordcloud_plot = generate_word_cloud(data.text)
                 st.pyplot(wordcloud_plot)
                 st.write("Adding the audio text to the knowledge base")
@@ -358,14 +453,39 @@ def main():
                 transcriber = aai.Transcriber()
                 data = transcriber.transcribe(audioFile)
                 st.write("Adding the audio text to the knowledge base")
-                #st.write(data)
-                #st.write(data.text)
+                with st.expander("View Transcription", expanded=False):
+                    st.text_area("Transcription", data.text, height=300)
                 wordcloud_plot = generate_word_cloud(data.text)
                 st.pyplot(wordcloud_plot)
                 text_chunks = get_text_chunks(data.text)
                 get_vector_store(text_chunks)
                 st.success("Text added to knowledge base successfully")
                 st.write("")
+
+
+    st.header("Youtube Video Transcribe")
+    st.write("[Note: only work locally because ffmpeg is not avaialbe in the server]")
+    link = st.text_input('Enter your YouTube video link', on_change=refresh_state)
+    if link:
+        #st.video(link)
+        st.text("The transcription is " + st.session_state['status'])
+        polling_endpoint = transcribe_from_link(link, False)
+        st.button('check_status', on_click=get_status, args=(polling_endpoint,))
+        transcript=''
+        if st.session_state['status']=='completed':
+            polling_response = requests.get(polling_endpoint, headers=headers)
+            transcript = polling_response.json()['text']
+
+            with st.expander("click to read the content:"):
+                st.text_area(transcript)
+            wordcloud_plot = generate_word_cloud(transcript)
+            st.pyplot(wordcloud_plot)
+            st.write("Adding the audio text to the knowledge base")
+            text_chunks = get_text_chunks(transcript)
+            get_vector_store(text_chunks)
+            st.success("Text from Youtube video added to knowledge base successfully")
+           
+
 
     st.write("This is how to setup sercets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
     st.write("This is how to setup sercets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")
