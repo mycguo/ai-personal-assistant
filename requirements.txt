@@ -31,3 +31,4 @@ fitz
 pytest
 langchain-nvidia-ai-endpoints
 langchain-deepseek-official
+openpyxl
