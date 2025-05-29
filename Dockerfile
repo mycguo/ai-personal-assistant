@@ -31,6 +31,9 @@ ENV PYTHONUNBUFFERED=1
 COPY --chown=appuser:appuser run.sh /home/appuser/
 RUN chmod +x /home/appuser/run.sh
 
+# Create .streamlit directory
+RUN mkdir -p /home/appuser/.streamlit
+
 EXPOSE 8080
 
 ENTRYPOINT ["./run.sh"]
