@@ -1,26 +1,35 @@
 #!/bin/bash
+set -e
+
+echo "Starting application..."
 
 APP_PID=
 stopRunningProcess() {
-    # Based on https://linuxconfig.org/how-to-propagate-a-signal-to-child-processes-from-a-bash-script
+    echo "Received shutdown signal..."
     if test ! "${APP_PID}" = '' && ps -p ${APP_PID} > /dev/null ; then
-       > /proc/1/fd/1 echo "Stopping ${COMMAND_PATH} which is running with process ID ${APP_PID}"
-
-       kill -TERM ${APP_PID}
-       > /proc/1/fd/1 echo "Waiting for ${COMMAND_PATH} to process SIGTERM signal"
-
+        echo "Stopping process with ID ${APP_PID}"
+        kill -TERM ${APP_PID}
+        echo "Waiting for process to handle SIGTERM"
         wait ${APP_PID}
-        > /proc/1/fd/1 echo "All processes have stopped running"
+        echo "Process stopped"
     else
-        > /proc/1/fd/1 echo "${COMMAND_PATH} was not started when the signal was sent or it has already been stopped"
+        echo "Process was not running or already stopped"
     fi
 }
 
 trap stopRunningProcess EXIT TERM
 
+echo "Activating virtual environment..."
 source ${VIRTUAL_ENV}/bin/activate
 
-streamlit run ${HOME}/app/app.py &
-APP_ID=${!}
+echo "Starting Streamlit on port ${PORT}..."
+streamlit run ${HOME}/app/app.py \
+    --server.port=${PORT} \
+    --server.address=0.0.0.0 \
+    --server.headless=true \
+    --browser.serverAddress=0.0.0.0 \
+    --browser.gatherUsageStats=false &
+APP_PID=${!}
 
-wait ${APP_ID}
+echo "Streamlit started with PID ${APP_PID}"
+wait ${APP_PID}

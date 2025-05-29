@@ -9,19 +9,28 @@ RUN pip3 install --no-cache-dir --upgrade \
 
 RUN apt-get update && apt-get install -y \
     build-essential \
-    software-properties-common \
-    git
+    software-properties-common
 
 USER appuser
 WORKDIR /home/appuser
 
-RUN git clone https://github.com/mycguo/resume-chat app
+# Copy application files
+COPY --chown=appuser:appuser . /home/appuser/app/
 
 ENV VIRTUAL_ENV=/home/appuser/venv
 RUN virtualenv ${VIRTUAL_ENV}
 RUN . ${VIRTUAL_ENV}/bin/activate && pip install -r app/requirements.txt
 
-EXPOSE 8501
+# Set environment variables for Cloud Run
+ENV PORT=8080
+ENV STREAMLIT_SERVER_PORT=8080
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV PYTHONUNBUFFERED=1
 
-COPY run.sh /home/appuser
+# Copy and set permissions for run script
+COPY --chown=appuser:appuser run.sh /home/appuser/
+RUN chmod +x /home/appuser/run.sh
+
+EXPOSE 8080
+
 ENTRYPOINT ["./run.sh"]
