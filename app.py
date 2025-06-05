@@ -39,7 +39,7 @@ def get_chat_chain():
     #    max_tokens=4096
     #)
     #
-    prompt=PromptTemplate(template=prompt_template, input_variabls=["context","questions"],output_variables=["answers"])
+    prompt=PromptTemplate(template=prompt_template, input_variables=["context", "questions"], output_variables=["answers"])
     chain = create_stuff_documents_chain(llm=model, prompt=prompt, document_variable_name="context")
     return chain
 
