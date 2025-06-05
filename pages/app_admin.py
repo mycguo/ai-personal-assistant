@@ -487,8 +487,8 @@ def main():
            
 
 
-    st.write("This is how to setup sercets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
-    st.write("This is how to setup sercets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")
+    st.write("This is how to setup secrets in streamlit at local environment https://docs.streamlit.io/develop/concepts/connections/secrets-management")
+    st.write("This is how to setup secrets in streamlit at cloud https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/secrets-management")
 
 if __name__ == "__main__":
     main()
