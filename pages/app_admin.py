@@ -13,6 +13,8 @@ import assemblyai as aai
 from moviepy import VideoFileClip
 import boto3
 import os
+import tempfile
+import shutil
 from langchain_community.document_loaders import WebBaseLoader
 import requests
 from bs4 import BeautifulSoup
@@ -154,22 +156,39 @@ def get_text_chunks(text):
     chunks = splitter.split_text(text)
     return chunks   
 
-def get_vector_store(text_chunks):
+def _load_vector_store(path="faiss_index"):
+    """Load the FAISS vector store if it exists and is valid."""
+    index_file = os.path.join(path, "index.faiss")
+    pkl_file = os.path.join(path, "index.pkl")
+    if os.path.exists(index_file) and os.path.exists(pkl_file):
+        try:
+            return FAISS.load_local(path, embedding, allow_dangerous_deserialization=True)
+        except Exception as e:
+            print(f"Error loading existing index: {e}. Recreating store.")
+    return FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
+
+
+def _safe_save_vector_store(vector_store, path="faiss_index"):
+    """Safely save the FAISS vector store by writing to a temporary directory first."""
+    tmp_dir = tempfile.mkdtemp()
     try:
-        vector_store = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
-    except Exception:
-        vector_store = FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
+        vector_store.save_local(tmp_dir)
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        shutil.move(tmp_dir, path)
+    finally:
+        if os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def get_vector_store(text_chunks):
+    vector_store = _load_vector_store()
     vector_store.add_texts(text_chunks)
-    vector_store.save_local("faiss_index")
+    _safe_save_vector_store(vector_store)
     return vector_store
 
 def get_current_store():
-    embedding = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    try:
-        vector_store = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
-    except Exception:
-        vector_store = FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
-    return vector_store     
+    return _load_vector_store()
 
 def generate_word_cloud(text):
     wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
