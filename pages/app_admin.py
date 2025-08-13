@@ -408,6 +408,137 @@ def main():
     st.header("URL fetcher")
     url = st.text_input("Enter the URL")
     max_depth = st.number_input("Enter the depth you want to crawel, default is 1, max_value is 3", value=1, max_value=3)
+    
+    # SSO Authentication support
+    st.subheader("Authentication Configuration (Optional)")
+    needs_auth = st.checkbox("This site requires authentication")
+    
+    auth_token = None
+    auth_headers = {}
+    
+    if needs_auth:
+        auth_method = st.selectbox("Authentication Method", 
+                                 ["Browser Login (Auto)", "Bearer Token", "API Key", "Cookie", "Custom Header"])
+        
+        if auth_method == "Browser Login (Auto)":
+            st.info("This will open a browser window for you to login, then automatically extract authentication data.")
+            login_url = st.text_input("Login URL", value=url, help="URL where you need to login")
+            
+            if st.button("🌐 Open Browser & Login"):
+                try:
+                    from selenium import webdriver
+                    from selenium.webdriver.chrome.options import Options
+                    from selenium.webdriver.common.by import By
+                    from selenium.webdriver.support.ui import WebDriverWait
+                    from selenium.webdriver.support import expected_conditions as EC
+                    import time
+                    
+                    # Configure Chrome options
+                    chrome_options = Options()
+                    chrome_options.add_argument("--no-sandbox")
+                    chrome_options.add_argument("--disable-dev-shm-usage")
+                    chrome_options.add_experimental_option("detach", True)
+                    
+                    # Start browser
+                    driver = webdriver.Chrome(options=chrome_options)
+                    driver.get(login_url)
+                    
+                    st.success("✅ Browser opened! Please complete your login in the browser window.")
+                    st.info("After logging in, click 'Extract Auth Data' below to capture cookies and tokens.")
+                    
+                    # Store driver in session state for later use
+                    st.session_state['selenium_driver'] = driver
+                    
+                except ImportError:
+                    st.error("Selenium not installed. Please run: pip install selenium")
+                except Exception as e:
+                    st.error(f"Failed to open browser: {str(e)}")
+            
+            # Extract auth data button
+            if 'selenium_driver' in st.session_state and st.button("🔐 Extract Auth Data"):
+                try:
+                    driver = st.session_state['selenium_driver']
+                    
+                    # Get all cookies
+                    cookies = driver.get_cookies()
+                    cookie_string = "; ".join([f"{cookie['name']}={cookie['value']}" for cookie in cookies])
+                    
+                    # Try to extract bearer token from localStorage
+                    bearer_token = None
+                    try:
+                        # Common localStorage keys for tokens
+                        token_keys = ['token', 'access_token', 'auth_token', 'jwt', 'authToken', 'accessToken']
+                        for key in token_keys:
+                            token = driver.execute_script(f"return localStorage.getItem('{key}');")
+                            if token:
+                                bearer_token = token
+                                break
+                    except:
+                        pass
+                    
+                    # Try to extract from sessionStorage
+                    if not bearer_token:
+                        try:
+                            for key in token_keys:
+                                token = driver.execute_script(f"return sessionStorage.getItem('{key}');")
+                                if token:
+                                    bearer_token = token
+                                    break
+                        except:
+                            pass
+                    
+                    # Display extracted data
+                    st.success("✅ Authentication data extracted!")
+                    
+                    with st.expander("Extracted Cookies", expanded=True):
+                        st.text_area("Cookie String", cookie_string, height=100)
+                        if cookie_string:
+                            auth_headers["Cookie"] = cookie_string
+                    
+                    if bearer_token:
+                        with st.expander("Extracted Bearer Token", expanded=True):
+                            st.text_area("Bearer Token", bearer_token, height=100)
+                            auth_headers["Authorization"] = f"Bearer {bearer_token}"
+                    
+                    # Close browser
+                    driver.quit()
+                    del st.session_state['selenium_driver']
+                    
+                except Exception as e:
+                    st.error(f"Failed to extract auth data: {str(e)}")
+        
+        elif auth_method == "Bearer Token":
+            auth_token = st.text_input("Bearer Token", type="password", 
+                                     help="Enter your OAuth/JWT bearer token")
+            if auth_token:
+                auth_headers["Authorization"] = f"Bearer {auth_token}"
+                
+        elif auth_method == "API Key":
+            api_key = st.text_input("API Key", type="password")
+            key_header = st.text_input("API Key Header Name", value="X-API-Key", 
+                                     help="Header name for the API key (e.g., X-API-Key, Authorization)")
+            if api_key and key_header:
+                auth_headers[key_header] = api_key
+                
+        elif auth_method == "Cookie":
+            cookie_value = st.text_input("Cookie Value", type="password",
+                                       help="Enter the full cookie string or session cookie value")
+            cookie_name = st.text_input("Cookie Name", value="session",
+                                      help="Name of the session cookie (if entering just the value)")
+            if cookie_value:
+                if "=" in cookie_value:
+                    # Full cookie string
+                    auth_headers["Cookie"] = cookie_value
+                else:
+                    # Just cookie value
+                    auth_headers["Cookie"] = f"{cookie_name}={cookie_value}"
+                    
+        elif auth_method == "Custom Header":
+            header_name = st.text_input("Header Name", placeholder="e.g., X-Auth-Token")
+            header_value = st.text_input("Header Value", type="password")
+            if header_name and header_value:
+                auth_headers[header_name] = header_value
+    
     if st.button("Submit & Process URL"):
         with st.spinner("Processing your URL..."):
             crawler = WebCrawler(url = url, max_depth=max_depth)     
@@ -420,7 +551,12 @@ def main():
                 "Accept-Language": "en-US,en;q=0.9",
                 "Accept-Encoding": "gzip, deflate, br",
                 "Connection": "keep-alive"
-            }         
+            }
+            
+            # Add authentication headers if provided
+            if needs_auth and auth_headers:
+                headers.update(auth_headers)
+                st.info(f"Added authentication headers: {list(auth_headers.keys())}")
 
             loader = WebBaseLoader(
                     web_path = list(urls),
