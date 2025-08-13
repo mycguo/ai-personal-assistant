@@ -418,30 +418,289 @@ def main():
     
     if needs_auth:
         auth_method = st.selectbox("Authentication Method", 
-                                 ["Browser Login (Auto)", "Bearer Token", "API Key", "Cookie", "Custom Header"])
+                                 ["Manual Browser (Recommended)", "Browser Extension Helper", "Browser Login (Auto)", "Bearer Token", "API Key", "Cookie", "Custom Header"])
         
-        if auth_method == "Browser Login (Auto)":
+        if auth_method == "Manual Browser (Recommended)":
+            st.info("🔧 **Manual method - Most reliable for complex sites like Atlassian**")
+            st.markdown("""
+            **Step-by-step instructions:**
+            1. Open your regular browser (Chrome/Firefox/Safari)
+            2. Navigate to the login page and complete authentication
+            3. Open Developer Tools (F12 or Right-click → Inspect)
+            4. Follow the extraction method below
+            """)
+            
+            extraction_method = st.radio("Choose extraction method:", 
+                                       ["Cookies (Easy)", "Network Headers (Advanced)", "Local Storage Tokens"])
+            
+            if extraction_method == "Cookies (Easy)":
+                st.markdown("""
+                **Extract Cookies:**
+                1. In Developer Tools, go to **Application** tab (Chrome) or **Storage** tab (Firefox)
+                2. Click on **Cookies** in the left sidebar
+                3. Select your domain
+                4. Copy all cookie values or use the button below to generate a script
+                """)
+                
+                if st.button("📋 Generate Cookie Extraction Script"):
+                    script = f"""
+// Run this in browser console (F12 → Console tab) after logging in
+let cookies = document.cookie;
+console.log("Copy this cookie string:");
+console.log(cookies);
+// Or copy individual cookies:
+document.cookie.split(';').forEach(cookie => console.log(cookie.trim()));
+                    """
+                    st.code(script, language="javascript")
+                
+                cookie_input = st.text_area("Paste Cookie String:", 
+                                          placeholder="session=abc123; token=xyz789; auth=...",
+                                          help="Paste the full cookie string from browser")
+                if cookie_input:
+                    auth_headers["Cookie"] = cookie_input
+                    st.success("✅ Cookies added to headers")
+            
+            elif extraction_method == "Network Headers (Advanced)":
+                st.markdown("""
+                **Extract from Network Requests:**
+                1. In Developer Tools, go to **Network** tab
+                2. Refresh the page or navigate to a protected area
+                3. Look for requests to your domain
+                4. Right-click a request → **Copy** → **Copy as cURL** or **Copy request headers**
+                5. Extract the Authorization header or other auth headers
+                """)
+                
+                header_input = st.text_area("Paste Headers:", 
+                                          placeholder="Authorization: Bearer eyJ...\nX-Auth-Token: abc123",
+                                          help="Paste headers line by line")
+                if header_input:
+                    for line in header_input.strip().split('\n'):
+                        if ':' in line:
+                            key, value = line.split(':', 1)
+                            auth_headers[key.strip()] = value.strip()
+                    st.success(f"✅ Added {len(auth_headers)} headers")
+                    st.json(list(auth_headers.keys()))
+            
+            elif extraction_method == "Local Storage Tokens":
+                st.markdown("""
+                **Extract Tokens from Storage:**
+                1. In Developer Tools, go to **Application** tab (Chrome) or **Storage** tab (Firefox)  
+                2. Check **Local Storage** and **Session Storage**
+                3. Look for tokens (usually keys like 'token', 'access_token', 'auth', 'jwt')
+                4. Use the script below to extract all tokens
+                """)
+                
+                if st.button("📋 Generate Token Extraction Script"):
+                    script = """
+// Run this in browser console (F12 → Console tab) after logging in
+console.log("=== LOCAL STORAGE TOKENS ===");
+for (let i = 0; i < localStorage.length; i++) {
+    let key = localStorage.key(i);
+    let value = localStorage.getItem(key);
+    if (key.toLowerCase().includes('token') || key.toLowerCase().includes('auth') || key.toLowerCase().includes('jwt')) {
+        console.log(`${key}: ${value}`);
+    }
+}
+
+console.log("=== SESSION STORAGE TOKENS ===");
+for (let i = 0; i < sessionStorage.length; i++) {
+    let key = sessionStorage.key(i);
+    let value = sessionStorage.getItem(key);
+    if (key.toLowerCase().includes('token') || key.toLowerCase().includes('auth') || key.toLowerCase().includes('jwt')) {
+        console.log(`${key}: ${value}`);
+    }
+}
+
+console.log("=== ALL COOKIES ===");
+console.log(document.cookie);
+                    """
+                    st.code(script, language="javascript")
+                
+                token_input = st.text_input("Token Value:", type="password",
+                                          help="Paste the token value from localStorage/sessionStorage")
+                token_type = st.selectbox("Token Type:", ["Bearer", "API Key", "Custom"])
+                
+                if token_input:
+                    if token_type == "Bearer":
+                        auth_headers["Authorization"] = f"Bearer {token_input}"
+                    elif token_type == "API Key":
+                        header_name = st.text_input("Header Name:", value="X-API-Key")
+                        if header_name:
+                            auth_headers[header_name] = token_input
+                    else:
+                        header_name = st.text_input("Header Name:", placeholder="X-Auth-Token")
+                        if header_name:
+                            auth_headers[header_name] = token_input
+                    
+                    if auth_headers:
+                        st.success("✅ Token added to headers")
+        
+        elif auth_method == "Browser Extension Helper":
+            st.info("🔧 **Browser Extension Method - Copy cookies with one click**")
+            st.markdown("""
+            **Install a cookie export extension:**
+            - **Chrome**: [Cookie-Editor](https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)
+            - **Firefox**: [Cookie Quick Manager](https://addons.mozilla.org/en-US/firefox/addon/cookie-quick-manager/)
+            - **Edge**: [Cookie-Editor](https://microsoftedge.microsoft.com/addons/detail/cookieeditor/neaplmfkghagebokkhpjpoebhdledlfi)
+            
+            **Steps:**
+            1. Install the extension
+            2. Login to your site normally
+            3. Click the extension icon
+            4. Export/copy all cookies for the domain
+            5. Paste below
+            """)
+            
+            export_format = st.selectbox("Export Format:", ["Netscape/curl format", "JSON", "Raw Cookie String"])
+            
+            cookie_data = st.text_area("Paste Exported Cookies:", 
+                                     placeholder="Paste the exported cookie data here...",
+                                     height=150)
+            
+            if cookie_data and st.button("Process Cookie Data"):
+                try:
+                    if export_format == "JSON":
+                        import json
+                        cookies = json.loads(cookie_data)
+                        if isinstance(cookies, list):
+                            cookie_string = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+                        else:
+                            cookie_string = "; ".join([f"{k}={v}" for k, v in cookies.items()])
+                    elif export_format == "Netscape/curl format":
+                        # Parse Netscape format
+                        lines = [line.strip() for line in cookie_data.split('\n') if line.strip() and not line.startswith('#')]
+                        cookies = []
+                        for line in lines:
+                            parts = line.split('\t')
+                            if len(parts) >= 7:
+                                cookies.append(f"{parts[5]}={parts[6]}")
+                        cookie_string = "; ".join(cookies)
+                    else:
+                        cookie_string = cookie_data.strip()
+                    
+                    auth_headers["Cookie"] = cookie_string
+                    st.success("✅ Cookies processed and added")
+                    st.text_area("Processed Cookie String:", cookie_string, height=100)
+                    
+                except Exception as e:
+                    st.error(f"Failed to process cookies: {str(e)}")
+                    st.info("Try using 'Raw Cookie String' format instead")
+        
+        elif auth_method == "Browser Login (Auto)":
             st.info("This will open a browser window for you to login, then automatically extract authentication data.")
             login_url = st.text_input("Login URL", value=url, help="URL where you need to login")
             
+            browser_choice = st.selectbox("Browser", ["Chrome", "Firefox", "Safari"], 
+                                        help="Choose browser for login")
+            
             if st.button("🌐 Open Browser & Login"):
                 try:
-                    from selenium import webdriver
-                    from selenium.webdriver.chrome.options import Options
-                    from selenium.webdriver.common.by import By
-                    from selenium.webdriver.support.ui import WebDriverWait
-                    from selenium.webdriver.support import expected_conditions as EC
+                    # Try undetected-chromedriver first, fallback to regular selenium
+                    try:
+                        import undetected_chromedriver as uc
+                        use_undetected = True
+                    except ImportError:
+                        from selenium import webdriver
+                        use_undetected = False
+                        st.info("💡 For better compatibility, install: pip install undetected-chromedriver")
+                    
                     import time
                     
-                    # Configure Chrome options
-                    chrome_options = Options()
-                    chrome_options.add_argument("--no-sandbox")
-                    chrome_options.add_argument("--disable-dev-shm-usage")
-                    chrome_options.add_experimental_option("detach", True)
-                    
-                    # Start browser
-                    driver = webdriver.Chrome(options=chrome_options)
+                    # Initialize browser based on choice
+                    if browser_choice == "Chrome":
+                        if use_undetected:
+                            # Use undetected-chromedriver for maximum compatibility
+                            options = uc.ChromeOptions()
+                            options.add_argument("--no-sandbox")
+                            options.add_argument("--disable-dev-shm-usage")
+                            
+                            driver = uc.Chrome(options=options, use_subprocess=True)
+                            st.info("✅ Using undetected Chrome driver for better compatibility")
+                            
+                        else:
+                            # Fallback to regular Chrome with anti-detection
+                            from selenium.webdriver.chrome.options import Options
+                            
+                            chrome_options = Options()
+                            
+                            # Basic stability options
+                            chrome_options.add_argument("--no-sandbox")
+                            chrome_options.add_argument("--disable-dev-shm-usage")
+                            chrome_options.add_argument("--disable-gpu")
+                            chrome_options.add_argument("--remote-debugging-port=9222")
+                            
+                            # Advanced anti-detection options
+                            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+                            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                            chrome_options.add_experimental_option('useAutomationExtension', False)
+                            chrome_options.add_experimental_option("detach", True)
+                            
+                            # Disable various automation indicators
+                            chrome_options.add_argument("--disable-extensions")
+                            chrome_options.add_argument("--disable-plugins")
+                            chrome_options.add_argument("--disable-javascript-harmony-shipping")
+                            chrome_options.add_argument("--disable-xss-auditor")
+                            chrome_options.add_argument("--disable-bundled-ppapi-flash")
+                            chrome_options.add_argument("--disable-plugins-discovery")
+                            chrome_options.add_argument("--disable-prerender-local-predictor")
+                            chrome_options.add_argument("--disable-sync")
+                            chrome_options.add_argument("--disable-background-timer-throttling")
+                            chrome_options.add_argument("--disable-renderer-backgrounding")
+                            chrome_options.add_argument("--disable-features=TranslateUI")
+                            chrome_options.add_argument("--disable-ipc-flooding-protection")
+                            
+                            # Set realistic browser profile
+                            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                            
+                            # Set prefs to avoid detection
+                            prefs = {
+                                "profile.default_content_setting_values.notifications": 2,
+                                "profile.default_content_settings.popups": 0,
+                                "profile.default_content_setting_values.plugins": 1,
+                            }
+                            chrome_options.add_experimental_option("prefs", prefs)
+                            
+                            driver = webdriver.Chrome(options=chrome_options)
+                            
+                            # Execute comprehensive anti-detection script
+                            driver.execute_script("""
+                                // Remove webdriver property
+                                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                                
+                                // Override the `plugins` property to use a custom getter
+                                Object.defineProperty(navigator, 'plugins', {
+                                    get: () => [1, 2, 3, 4, 5]
+                                });
+                                
+                                // Override the `languages` property to use a custom getter
+                                Object.defineProperty(navigator, 'languages', {
+                                    get: () => ['en-US', 'en']
+                                });
+                                
+                                // Mock chrome runtime
+                                window.chrome = {
+                                    runtime: {}
+                                };
+                            """)
+                        
+                    elif browser_choice == "Firefox":
+                        from selenium.webdriver.firefox.options import Options
+                        firefox_options = Options()
+                        firefox_options.add_argument("--disable-blink-features=AutomationControlled")
+                        firefox_options.set_preference("dom.webdriver.enabled", False)
+                        firefox_options.set_preference("useAutomationExtension", False)
+                        firefox_options.set_preference("general.useragent.override", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0")
+                        
+                        driver = webdriver.Firefox(options=firefox_options)
+                        
+                    elif browser_choice == "Safari":
+                        driver = webdriver.Safari()
+                        
+                    # Load the page
                     driver.get(login_url)
+                    
+                    # Wait a moment for the page to load
+                    time.sleep(3)
                     
                     st.success("✅ Browser opened! Please complete your login in the browser window.")
                     st.info("After logging in, click 'Extract Auth Data' below to capture cookies and tokens.")
@@ -453,6 +712,11 @@ def main():
                     st.error("Selenium not installed. Please run: pip install selenium")
                 except Exception as e:
                     st.error(f"Failed to open browser: {str(e)}")
+                    st.info("💡 **Alternative**: Try opening the site manually in your regular browser, login, then:")
+                    st.info("1. Open Developer Tools (F12)")
+                    st.info("2. Go to Application/Storage tab")
+                    st.info("3. Copy cookies from Cookies section")
+                    st.info("4. Use 'Cookie' method above to paste them")
             
             # Extract auth data button
             if 'selenium_driver' in st.session_state and st.button("🔐 Extract Auth Data"):
@@ -564,6 +828,7 @@ def main():
                     continue_on_failure = True,
                     show_progress = True)
             all_texts = [doc.page_content for doc in loader.load()]
+            st.write(all_texts);
             text = "\n".join(all_texts)
             wordcloud_plot = generate_word_cloud(text)
             st.pyplot(wordcloud_plot)
