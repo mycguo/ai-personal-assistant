@@ -15,14 +15,26 @@ class WebCrawler:
         return self.crawl(url, depth=0)
 
     def crawl(self, url, depth):
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept-Encoding": "identity"  # Disable compression to avoid encoding issues
+        }
         self.subdomains.add(url)
        
         try:
-            response = requests.get(url, headers=headers, timeout=3, allow_redirects=True)
+            response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
+            response.raise_for_status()  # Raise exception for bad status codes
+            
+            # Handle encoding explicitly
+            if response.encoding is None:
+                response.encoding = 'utf-8'
+            
             soup = BeautifulSoup(response.text, 'html.parser')
         except requests.exceptions.RequestException as err:
             print(f"[-] An error occurred: {err}")
+            return self.subdomains
+        except UnicodeDecodeError as err:
+            print(f"[-] Encoding error occurred: {err}")
             return self.subdomains
 
         subdomain_query = fr"{url}([a-zA-Z0-9.-]+)"
@@ -46,10 +58,10 @@ class WebCrawler:
         return self.subdomains
 
     def print_results(self):
-        st.write("All the URLs porcessed")
+        print("All the URLs processed")
         if self.subdomains:
             for subdomain in self.subdomains:
-                st.write(f"[+]: {subdomain}")
+                print(f"[+]: {subdomain}")
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -60,5 +72,5 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     web_crawler = WebCrawler(args.url, args.depth)
-    web_crawler.start_crawling()
+    web_crawler.start_crawling(args.url)
     web_crawler.print_results()

@@ -33,7 +33,8 @@ if 'status' not in st.session_state:
 
 session = requests.Session()
 session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Accept-Encoding": "identity"  # Disable compression to avoid garbled text
 })
 
 ydl_opts = {
@@ -233,10 +234,17 @@ def upload_file_to_s3(local_file_path, bucket_name, s3_key):
 def get_urls(url): 
     urls=[] 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept-Encoding": "identity"  # Disable compression to avoid garbled text
     }
     # Getting the request from the URL
-    r = requests.get(url, headers=headers)       
+    r = requests.get(url, headers=headers)
+    r.raise_for_status()  # Raise exception for bad status codes
+    
+    # Handle encoding explicitly
+    if r.encoding is None:
+        r.encoding = 'utf-8'
+        
     # converting the text 
     print(f"Processing url {url}")
     s = BeautifulSoup(r.text,"html.parser")    
@@ -418,7 +426,7 @@ def main():
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "identity",  # Disable compression to avoid garbled text
                 "Connection": "keep-alive"
             }         
 
@@ -429,6 +437,7 @@ def main():
                     show_progress = True)
             all_texts = [doc.page_content for doc in loader.load()]
             text = "\n".join(all_texts)
+            # print(text)
             wordcloud_plot = generate_word_cloud(text)
             st.pyplot(wordcloud_plot)
             text_chunks = get_text_chunks(text)
