@@ -58,7 +58,7 @@ class WebCrawler:
         return self.subdomains
 
     def print_results(self):
-        print("All the URLs processed")
+        st.write("All the URLs porcessed")
         if self.subdomains:
             for subdomain in self.subdomains:
                 print(f"[+]: {subdomain}")
