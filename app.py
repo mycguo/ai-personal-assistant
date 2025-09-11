@@ -1,7 +1,7 @@
 # UI for asking questions on the knowledge base
 import streamlit as st
 import os
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 import google.generativeai as genai
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -44,7 +44,7 @@ def get_chat_chain():
     return chain
 
 def user_input(user_question):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
     vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
     docs = vector_store.similarity_search(user_question)
 
@@ -109,7 +109,7 @@ def main():
         web framework: https://streamlit.io/ \n
         LLM model: "deepseek-ai/deepseek-r1" \n
         vector store: FAISS (Facebook AI Similarity Search) \n
-        Embeddings model: GoogleGenerativeAIEmbeddings(model="models/embedding-001") \n
+        Embeddings model: OpenAI text-embedding-3-large \n
         LangChain: Connect LLMs for Retrieval-Augmented Generation (RAG), memory, chaining and reasoning. \n
         PyPDF2 and docx: for importing PDF and Word \n
         audio: assemblyai https://www.assemblyai.com/ \n
