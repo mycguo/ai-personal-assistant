@@ -3,7 +3,7 @@ import streamlit as st
 import os
 from langchain_openai import OpenAIEmbeddings
 import google.generativeai as genai
-from langchain_community.vectorstores import FAISS
+from simple_vector_store import SimpleVectorStore as MilvusVectorStore
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from pages.app_admin import get_vector_store, get_text_chunks
@@ -44,8 +44,7 @@ def get_chat_chain():
     return chain
 
 def user_input(user_question):
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-    vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    vector_store = MilvusVectorStore(store_path="./vector_store_personal_assistant")
     docs = vector_store.similarity_search(user_question)
 
     chain = get_chat_chain()
@@ -78,18 +77,9 @@ def download_s3_bucket(bucket_name, download_dir):
             s3.download_file(bucket_name, key, local_file_path)
 
 def download_faiss_from_s3():
-    s3 = boto3.client(
-        "s3",
-        region_name="us-west-2",
-        aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
-    )
-    bucket_name = st.secrets["BUCKET_NAME"]
-    print(bucket_name)
-    # Download the FAISS index file from S3
-    s3.download_file(bucket_name, "index.faiss", "index.faiss")
-    s3.download_file(bucket_name, "index.pkl", "index.pkl")
-    print(f"Downloaded FAISS index from s3://${bucket_name} to local directory")
+    # Milvus data is managed by the Milvus server
+    # Migration from S3-stored FAISS can be done with MilvusVectorStore.migrate_from_faiss()
+    print("Milvus uses its own persistence. Migration from FAISS can be done if needed.")
 
 def main():
     st.title("AI Knowledge Assistant")
@@ -107,9 +97,9 @@ def main():
     st.markdown(""" \n \n \n \n \n \n \n\n\n\n\n\n
         # Footnote on tech stack
         web framework: https://streamlit.io/ \n
-        LLM model: "deepseek-ai/deepseek-r1" \n
-        vector store: FAISS (Facebook AI Similarity Search) \n
-        Embeddings model: OpenAI text-embedding-3-large \n
+        LLM model: "gemini-2.0-flash" \n
+        Vector store: Milvus \n
+        Embeddings model: Milvus text-embedding-3-large \n
         LangChain: Connect LLMs for Retrieval-Augmented Generation (RAG), memory, chaining and reasoning. \n
         PyPDF2 and docx: for importing PDF and Word \n
         audio: assemblyai https://www.assemblyai.com/ \n

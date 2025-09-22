@@ -3,7 +3,9 @@ google-generativeai
 python-dotenv
 langchain
 PyPDF2
-faiss-cpu
+pymilvus>=2.4.0
+langchain-milvus
+milvus-lite
 langchain_google_genai
 langchain-community
 python-docx

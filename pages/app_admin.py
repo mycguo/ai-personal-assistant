@@ -4,7 +4,7 @@ from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 import google.generativeai as genai
-from langchain_community.vectorstores import FAISS
+from simple_vector_store import SimpleVectorStore as MilvusVectorStore
 import docx  # Import the python-docx library
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -121,8 +121,8 @@ def get_pdf_text(pdf_docs):
     metadata_list = []
     for pdf_doc in pdf_docs:
         pdf = PdfReader(pdf_doc)
-        # Get document metadata
-        doc_info = pdf.metadata
+        # Get document metadata (handle case where metadata is None)
+        doc_info = pdf.metadata or {}
         metadata = {
             'filename': pdf_doc.name,
             'num_pages': len(pdf.pages),
@@ -157,35 +157,28 @@ def get_text_chunks(text):
     chunks = splitter.split_text(text)
     return chunks   
 
-def _load_vector_store(path="faiss_index"):
-    """Load the FAISS vector store if it exists and is valid."""
-    index_file = os.path.join(path, "index.faiss")
-    pkl_file = os.path.join(path, "index.pkl")
-    if os.path.exists(index_file) and os.path.exists(pkl_file):
-        try:
-            return FAISS.load_local(path, embedding, allow_dangerous_deserialization=True)
-        except Exception as e:
-            print(f"Error loading existing index: {e}. Recreating store.")
-    return FAISS.from_texts(get_text_chunks("Loading some documents first"), embedding=embedding)
-
-
-def _safe_save_vector_store(vector_store, path="faiss_index"):
-    """Safely save the FAISS vector store by writing to a temporary directory first."""
-    tmp_dir = tempfile.mkdtemp()
+def _load_vector_store(collection_name="personal_assistant"):
+    """Load the vector store."""
     try:
-        vector_store.save_local(tmp_dir)
-        if os.path.exists(path):
-            shutil.rmtree(path)
-        shutil.move(tmp_dir, path)
-    finally:
-        if os.path.exists(tmp_dir):
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+        store_path = f"./vector_store_{collection_name}"
+        return MilvusVectorStore(store_path=store_path)
+    except Exception as e:
+        print(f"Error loading vector store: {e}. Creating new store.")
+        store_path = f"./vector_store_{collection_name}"
+        return MilvusVectorStore.from_texts(
+            texts=get_text_chunks("Loading some documents first"),
+            store_path=store_path
+        )
+
+
+def _safe_save_vector_store(vector_store, collection_name="personal_assistant"):
+    """Milvus automatically persists data, no manual save needed."""
+    pass
 
 
 def get_vector_store(text_chunks):
     vector_store = _load_vector_store()
     vector_store.add_texts(text_chunks)
-    _safe_save_vector_store(vector_store)
     return vector_store
 
 def get_current_store():
@@ -200,15 +193,9 @@ def generate_word_cloud(text):
     return plt
 
 def upload_vector_store_to_s3():
-    # Correct file paths for FAISS index files
-    faiss_index_file = "faiss_index/index.faiss"
-    faiss_metadata_file = "faiss_index/index.pkl"
-   # Ensure the files exist before uploading
-    if os.path.exists(faiss_index_file) and os.path.exists(faiss_metadata_file):      
-        upload_file_to_s3(faiss_index_file, st.secrets["BUCKET_NAME"], "index.faiss")
-        upload_file_to_s3(faiss_metadata_file, st.secrets["BUCKET_NAME"], "index.pkl")
-    else:
-        print("FAISS index files not found. Ensure they are saved correctly.")
+    # Milvus data is managed by the Milvus server
+    # For cloud deployment, use Milvus Cloud or Zilliz Cloud
+    print("Milvus data is persisted automatically. For cloud deployment, configure Milvus Cloud.")
 
 def upload_file_to_s3(local_file_path, bucket_name, s3_key):
     """
