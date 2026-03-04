@@ -1,109 +1,85 @@
 # UI for asking questions on the knowledge base
 import streamlit as st
 import os
-from langchain_openai import OpenAIEmbeddings
 import google.generativeai as genai
-from simple_vector_store import SimpleVectorStore as MilvusVectorStore
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
-from pages.app_admin import get_vector_store, get_text_chunks
-from langchain.chains.combine_documents import create_stuff_documents_chain
-import boto3
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
+from file_manager import get_all_file_uris
 
+# Configure API key
+# Configure API key
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+elif "GENAI_API_KEY" in os.environ:
+    genai.configure(api_key=os.getenv("GENAI_API_KEY"))
+else:
+    st.error("GOOGLE_API_KEY not found in secrets or environment.")
 
-genai.configure(api_key=os.getenv("GENAI_API_KEY"))
-os.environ["USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-
-nvidia_api_key = st.secrets["NVIDIA_API_KEY"]
-
-def get_prompt_template():
-    return PromptTemplate()
-
-def get_chat_chain():
-    prompt_template="""
-    Answer the questions based on local konwledge base honestly
-
-    Context:\n {context} \n
-    Questions: \n {questions} \n
-
-    Answers:
-"""
-    model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.3)
-    # This is too slow
-    #model = ChatNVIDIA(
-    #    model="deepseek-ai/deepseek-r1",
-    #    api_key=nvidia_api_key,
-    #    temperature=0.7,
-    #    top_p=0.8,
-    #    max_tokens=4096
-    #)
-    #
-    prompt=PromptTemplate(template=prompt_template, input_variables=["context", "questions"], output_variables=["answers"])
-    chain = create_stuff_documents_chain(llm=model, prompt=prompt, document_variable_name="context")
-    return chain
+def get_model():
+    model_name = st.sidebar.selectbox(
+        "Select Model", 
+        ["gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-3-pro-preview"],
+        index=0
+    )
+    return genai.GenerativeModel(model_name)
 
 def user_input(user_question):
-    vector_store = MilvusVectorStore(store_path="./vector_store_personal_assistant")
-    docs = vector_store.similarity_search(user_question)
-
-    chain = get_chat_chain()
-
-    response = chain.invoke({"context": docs, "questions": user_question})
-
-    print(response)
-    st.write("Reply: ",response)
-
-
-def download_s3_bucket(bucket_name, download_dir):
-    s3 = boto3.client('s3')
+    file_uris = get_all_file_uris()
     
-    # Ensure the download directory exists
-    if not os.path.exists(download_dir):
-        os.makedirs(download_dir)
-    
-    # Pagination in case the bucket has many objects
-    paginator = s3.get_paginator('list_objects_v2')
-    for page in paginator.paginate(Bucket=bucket_name):
-        for obj in page.get('Contents', []):
-            key = obj['Key']
-            local_file_path = os.path.join(download_dir, key)
-            
-            # Create local directories if they don't exist
-            if not os.path.exists(os.path.dirname(local_file_path)):
-                os.makedirs(os.path.dirname(local_file_path))
-                
-            print(f"Downloading {key} to {local_file_path}")
-            s3.download_file(bucket_name, key, local_file_path)
+    if not file_uris:
+        st.warning("No documents found in the knowledge base. Please upload documents in the Admin page.")
+        return
 
-def download_faiss_from_s3():
-    # Milvus data is managed by the Milvus server
-    # Migration from S3-stored FAISS can be done with MilvusVectorStore.migrate_from_faiss()
-    print("Milvus uses its own persistence. Migration from FAISS can be done if needed.")
+    model = get_model()
+    
+    # Construct the prompt with files
+    # For Gemini, we can pass file URIs directly in the content
+    content = []
+    
+    # Add files to context
+    for uri in file_uris:
+        file_obj = genai.get_file(uri) # Verify it exists/get metadata if needed, or just pass URI object if supported
+        # The python SDK allows passing the file object returned by upload_file or get_file, 
+        # or a part object. Let's get the file object.
+        content.append(file_obj)
+        
+    content.append(user_question)
+
+    import time
+    from google.api_core import exceptions
+
+    with st.spinner("Thinking..."):
+        retry_count = 0
+        max_retries = 3
+        while retry_count < max_retries:
+            try:
+                response = model.generate_content(content)
+                st.write("Reply:", response.text)
+                break
+            except exceptions.ResourceExhausted as e:
+                retry_count += 1
+                wait_time = 2 ** retry_count + 10 # Exponential backoff + buffer
+                if retry_count == max_retries:
+                    st.error(f"Quota exceeded after {max_retries} retries. Please try a different model or wait longer.")
+                else:
+                    st.warning(f"Rate limit hit. Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+            except Exception as e:
+                st.error(f"Error generating response: {e}")
+                break
 
 def main():
-    st.title("AI Knowledge Assistant")
+    st.title("AI Knowledge Assistant (Gemini 3 + File Search)")
     st.header("Ask questions on your knowledge base")
 
-    # fix the empty vector store issue
-    get_vector_store(get_text_chunks("Loading some documents to build your knowledge base"))
-
-    user_question = st.text_input("Ask me a question like: 'tell me about Charles?' or just 'hello' ")
+    user_question = st.text_input("Ask me a question about your documents:")
     if user_question:
         user_input(user_question)
     
-    
     st.markdown("<div style='height:300px;'></div>", unsafe_allow_html=True)
-    st.markdown(""" \n \n \n \n \n \n \n\n\n\n\n\n
-        # Footnote on tech stack
-        web framework: https://streamlit.io/ \n
-        LLM model: "gemini-2.0-flash" \n
-        Vector store: Milvus \n
-        Embeddings model: Milvus text-embedding-3-large \n
-        LangChain: Connect LLMs for Retrieval-Augmented Generation (RAG), memory, chaining and reasoning. \n
-        PyPDF2 and docx: for importing PDF and Word \n
-        audio: assemblyai https://www.assemblyai.com/ \n
-        Video: moviepy https://zulko.github.io/moviepy/ \n
+    st.markdown(""" 
+        # Tech Stack
+        - **Web Framework**: Streamlit
+        - **Model**: Gemini 3.0 (gemini-2.0-flash-exp as placeholder if 3.0 not avail)
+        - **RAG**: Google Gen AI File API (Long Context)
     """)    
 
 if __name__ == "__main__":
