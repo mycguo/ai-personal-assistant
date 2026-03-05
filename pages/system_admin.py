@@ -1,18 +1,41 @@
 import streamlit as st
 from file_manager import clear_files, load_files
 
+
+def _get_auth_state():
+    """Return (auth_available, is_logged_in, display_name)."""
+    if hasattr(st, "experimental_user"):
+        user = st.experimental_user
+        return True, bool(getattr(user, "is_logged_in", False)), getattr(user, "name", "User")
+
+    if hasattr(st, "user"):
+        user = st.user
+        return True, bool(getattr(user, "is_logged_in", False)), getattr(user, "name", "User")
+
+    return False, True, "Admin"
+
+
 def login_screen():
     st.header("This is for system admin only. Please login first")
     st.subheader("Please log in.")
-    st.button("Log in with Google", on_click=st.login)
+    if hasattr(st, "login"):
+        st.button("Log in with Google", on_click=st.login)
+    else:
+        st.warning("Streamlit authentication is unavailable in this deployment.")
 
 
 
 def main():
-    if not st.experimental_user.is_logged_in:
+    auth_available, is_logged_in, display_name = _get_auth_state()
+
+    if auth_available and not is_logged_in:
         login_screen()
     else:
-        st.header(f"Welcome, {st.experimental_user.name}!")
+        if auth_available:
+            st.header(f"Welcome, {display_name}!")
+        else:
+            st.warning("Streamlit auth APIs are not available; admin page is shown without login.")
+
         st.title("Knowledge Assistant System Admin")
         st.header("System Admin Maintenance")
         st.info("This app now uses Gemini File API instead of local vector store/S3 sync.")
@@ -31,7 +54,8 @@ def main():
             st.success("Local file registry cleared.")
             st.rerun()
 
-        st.button("Log out", on_click=st.logout)
+        if auth_available and hasattr(st, "logout"):
+            st.button("Log out", on_click=st.logout)
 
 if __name__ == "__main__":
     main()
