@@ -24,12 +24,11 @@ def wait_for_files_active(files):
     for name in (file.name for file in files):
         file = genai.get_file(name)
         while file.state.name == "PROCESSING":
-            st.write(".", end="", flush=True)
             time.sleep(2)
             file = genai.get_file(name)
         if file.state.name != "ACTIVE":
             raise Exception(f"File {file.name} failed to process")
-    st.write("...all files ready")
+    st.write("All files are ready.")
 
 def main():
     st.title("Knowledge Assistant Admin")

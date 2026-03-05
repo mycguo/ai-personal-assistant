@@ -1,9 +1,5 @@
 import streamlit as st
-from app import download_faiss_from_s3, download_s3_bucket   
-from pages.app_admin import upload_vector_store_to_s3
-
-
-bucket_name = st.secrets["BUCKET_NAME"]
+from file_manager import clear_files, load_files
 
 def login_screen():
     st.header("This is for system admin only. Please login first")
@@ -18,22 +14,22 @@ def main():
     else:
         st.header(f"Welcome, {st.experimental_user.name}!")
         st.title("Knowledge Assistant System Admin")
-        st.header("System Admin Only: Danger Zone")
-        if st.button("Upload Vector Store to S3"):
-            with st.spinner("Uploading to S3..."):
-                upload_vector_store_to_s3()
-                st.success("Uploaded to S3!")
+        st.header("System Admin Maintenance")
+        st.info("This app now uses Gemini File API instead of local vector store/S3 sync.")
 
-        if st.button("Download Vector Store from S3"):
-            with st.spinner("Downloading from S3..."):
-                download_s3_bucket(bucket_name, "faiss_download")
-                st.success("Downloaded file from S3!")
+        current_files = load_files()
+        st.write(f"Tracked uploaded files: {len(current_files)}")
 
-        if st.button("Download Vector Store from S3 and overwrite the local index"):
-            with st.spinner("Downloading from S3..."):
-                download_s3_bucket(bucket_name, "faiss_index")
-                st.success("Downloaded file from S3!")
+        if current_files:
+            with st.expander("View tracked files"):
+                for f in current_files:
+                    st.write(f"- {f.get('name', 'unknown')} ({f.get('mime_type', 'unknown')})")
 
+        st.header("Danger Zone")
+        if st.button("Clear Local File Registry"):
+            clear_files()
+            st.success("Local file registry cleared.")
+            st.rerun()
 
         st.button("Log out", on_click=st.logout)
 
