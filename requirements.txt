@@ -28,6 +28,7 @@ Authlib
 boto3
 bs4
 yt_dlp
+youtube-transcript-api
 docx2txt
 fitz
 pytest

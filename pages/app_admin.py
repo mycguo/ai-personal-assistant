@@ -21,6 +21,7 @@ from bs4 import BeautifulSoup
 from webcrawer import WebCrawler
 import yt_dlp as youtube_dl
 from yt_dlp.utils import DownloadError
+from urllib.parse import parse_qs, urlparse
 
 #configuring the google api key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -65,6 +66,49 @@ headers = {
 }
 CHUNK_SIZE = 5242880
 
+
+def _extract_youtube_video_id(link):
+    parsed = urlparse(link.strip())
+    if parsed.hostname in {"youtu.be"}:
+        return parsed.path.lstrip("/")
+    if parsed.hostname in {"www.youtube.com", "youtube.com", "m.youtube.com"}:
+        if parsed.path == "/watch":
+            return parse_qs(parsed.query).get("v", [None])[0]
+        if parsed.path.startswith("/shorts/"):
+            return parsed.path.split("/")[2]
+        if parsed.path.startswith("/embed/"):
+            return parsed.path.split("/")[2]
+    return None
+
+
+def _fetch_youtube_captions_text(link):
+    video_id = _extract_youtube_video_id(link)
+    if not video_id:
+        return None
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+    except Exception:
+        return None
+
+    try:
+        api = YouTubeTranscriptApi()
+        try:
+            transcript = api.fetch(video_id, languages=["en", "en-US"])
+        except Exception:
+            transcript = api.fetch(video_id)
+        # Support both dict and object transcript entries.
+        chunks = []
+        for part in transcript:
+            if isinstance(part, dict):
+                chunks.append(part.get("text", ""))
+            else:
+                chunks.append(getattr(part, "text", ""))
+        text = " ".join(chunks).strip()
+        return text or None
+    except Exception:
+        return None
+
+
 @st.cache_data
 def transcribe_from_link(link, categories: bool):
 	_id = link.strip()
@@ -82,6 +126,10 @@ def transcribe_from_link(link, categories: bool):
 	try:
 		meta, save_location = get_vid(_id)
 	except DownloadError as err:
+		fallback_text = _fetch_youtube_captions_text(_id)
+		if fallback_text:
+			st.warning("YouTube media download was blocked (403). Using YouTube captions instead.")
+			return {"mode": "direct", "transcript": fallback_text}
 		st.error(f"YouTube download failed: {err}")
 		return None
 	except Exception as err:
@@ -129,7 +177,7 @@ def transcribe_from_link(link, categories: bool):
 
 	print("Transcribing at", polling_endpoint)
 
-	return polling_endpoint
+	return {"mode": "assemblyai", "polling_endpoint": polling_endpoint}
 
 def get_status(polling_endpoint):
 	polling_response = requests.get(polling_endpoint, headers=headers)
@@ -508,9 +556,23 @@ def main():
     if link:
         #st.video(link)
         st.text("The transcription is " + st.session_state['status'])
-        polling_endpoint = transcribe_from_link(link, False)
-        if not polling_endpoint:
+        transcribe_result = transcribe_from_link(link, False)
+        if not transcribe_result:
             return
+        if isinstance(transcribe_result, dict) and transcribe_result.get("mode") == "direct":
+            transcript = transcribe_result.get("transcript", "")
+            st.session_state['status'] = 'completed'
+            with st.expander("click to read the content:"):
+                st.text_area(transcript)
+            wordcloud_plot = generate_word_cloud(transcript)
+            st.pyplot(wordcloud_plot)
+            st.write("Adding the audio text to the knowledge base")
+            text_chunks = get_text_chunks(transcript)
+            get_vector_store(text_chunks)
+            st.success("Text from Youtube video added to knowledge base successfully")
+            return
+
+        polling_endpoint = transcribe_result["polling_endpoint"] if isinstance(transcribe_result, dict) else transcribe_result
         st.button('check_status', on_click=get_status, args=(polling_endpoint,))
         transcript=''
         if st.session_state['status']=='completed':
