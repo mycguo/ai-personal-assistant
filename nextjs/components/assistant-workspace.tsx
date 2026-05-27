@@ -3,8 +3,10 @@
 import {
   AlertTriangle,
   AudioLines,
+  Copy,
   Database,
   Download,
+  Eye,
   FileText,
   Globe2,
   Loader2,
@@ -48,6 +50,7 @@ export function AssistantWorkspace() {
   const [mediaUrl, setMediaUrl] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [maxDepth, setMaxDepth] = useState(1);
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -78,6 +81,21 @@ export function AssistantWorkspace() {
   }, [state.sources, state.chunks.length]);
 
   const canAsk = state.chunks.length > 0 && question.trim().length > 0 && !isPending;
+  const selectedSource = useMemo(
+    () => state.sources.find((source) => source.id === selectedSourceId) ?? null,
+    [selectedSourceId, state.sources],
+  );
+  const selectedChunks = useMemo(
+    () => state.chunks.filter((chunk) => chunk.sourceId === selectedSourceId),
+    [selectedSourceId, state.chunks],
+  );
+  const selectedText = useMemo(
+    () =>
+      selectedChunks
+        .map((chunk, index) => `--- Chunk ${index + 1} ---\n${chunk.content}`)
+        .join("\n\n"),
+    [selectedChunks],
+  );
 
   async function ingestFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -99,6 +117,7 @@ export function AssistantWorkspace() {
       }
 
       setState((current) => appendIngestResults(current, results));
+      setSelectedSourceId(results[0]?.source.id ?? null);
       setStatus(`Added ${results.reduce((sum, item) => sum + item.chunks.length, 0)} chunks.`);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
@@ -124,6 +143,7 @@ export function AssistantWorkspace() {
       if (!response.ok) throw new Error(payload.error || "Unable to ingest URL.");
 
       setState((current) => appendIngestResults(current, [payload]));
+      setSelectedSourceId(payload.source.id);
       setStatus(`Added ${payload.chunks.length} chunks from ${value}.`);
       setUrl("");
     } catch (err) {
@@ -194,6 +214,7 @@ export function AssistantWorkspace() {
 
       if (payload.status === "completed") {
         setState((current) => appendIngestResults(current, [payload]));
+        setSelectedSourceId(payload.source.id);
         setStatus(`Added transcript from ${name}.`);
         return;
       }
@@ -223,6 +244,7 @@ export function AssistantWorkspace() {
       if (!response.ok) throw new Error(payload.error || "Unable to import YouTube captions.");
 
       setState((current) => appendIngestResults(current, [payload]));
+      setSelectedSourceId(payload.source.id);
       setStatus(`Added ${payload.chunks.length} chunks from YouTube captions.`);
       setYoutubeUrl("");
     } catch (err) {
@@ -286,10 +308,12 @@ export function AssistantWorkspace() {
       sources: current.sources.filter((source) => source.id !== sourceId),
       chunks: current.chunks.filter((chunk) => chunk.sourceId !== sourceId),
     }));
+    if (selectedSourceId === sourceId) setSelectedSourceId(null);
   }
 
   function resetWorkspace() {
     setState(EMPTY_STATE);
+    setSelectedSourceId(null);
     setStatus(null);
     setError(null);
   }
@@ -302,6 +326,12 @@ export function AssistantWorkspace() {
     anchor.download = `knowledge-assistant-${new Date().toISOString()}.json`;
     anchor.click();
     URL.revokeObjectURL(href);
+  }
+
+  async function copySelectedText() {
+    if (!selectedText) return;
+    await navigator.clipboard.writeText(selectedText);
+    setStatus("Copied imported text to clipboard.");
   }
 
   return (
@@ -436,7 +466,13 @@ export function AssistantWorkspace() {
               <p className="emptyText">No sources yet.</p>
             ) : (
               state.sources.map((source) => (
-                <SourceRow key={source.id} source={source} onRemove={removeSource} />
+                <SourceRow
+                  key={source.id}
+                  source={source}
+                  isSelected={source.id === selectedSourceId}
+                  onRemove={removeSource}
+                  onSelect={setSelectedSourceId}
+                />
               ))
             )}
           </div>
@@ -468,6 +504,36 @@ export function AssistantWorkspace() {
               <X size={14} aria-hidden="true" />
             </button>
           </div>
+        )}
+
+        {selectedSource && (
+          <section className="previewPanel" aria-label="Imported text preview">
+            <div className="previewHeader">
+              <div>
+                <p className="smallLabel">Imported text</p>
+                <h3>{selectedSource.name}</h3>
+                <span>
+                  {selectedSource.chunkCount.toLocaleString()} chunks,{" "}
+                  {selectedSource.characterCount.toLocaleString()} extracted characters
+                </span>
+              </div>
+              <div className="previewActions">
+                <button className="iconButton" onClick={() => void copySelectedText()} aria-label="Copy imported text">
+                  <Copy size={16} aria-hidden="true" />
+                </button>
+                <button className="iconButton" onClick={() => setSelectedSourceId(null)} aria-label="Close imported text preview">
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <textarea
+              className="previewText"
+              name="imported-text-preview"
+              readOnly
+              value={selectedText}
+              aria-label={`Imported text from ${selectedSource.name}`}
+            />
+          </section>
         )}
 
         <div className="messageList">
@@ -531,20 +597,27 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function SourceRow({
   source,
+  isSelected,
+  onSelect,
   onRemove,
 }: {
   source: KnowledgeSource;
+  isSelected: boolean;
+  onSelect: (sourceId: string) => void;
   onRemove: (sourceId: string) => void;
 }) {
   const Icon =
     source.type === "url" ? Globe2 : source.type === "youtube" ? Video : source.type === "media" ? AudioLines : FileText;
   return (
-    <div className="sourceRow">
+    <div className={isSelected ? "sourceRow selectedSourceRow" : "sourceRow"}>
       <Icon size={16} aria-hidden="true" />
       <div>
         <strong>{source.name}</strong>
         <span>{source.chunkCount} chunks</span>
       </div>
+      <button className="rowButton" onClick={() => onSelect(source.id)} aria-label={`View imported text from ${source.name}`}>
+        <Eye size={14} aria-hidden="true" />
+      </button>
       <button className="rowButton" onClick={() => onRemove(source.id)} aria-label={`Remove ${source.name}`}>
         <X size={14} aria-hidden="true" />
       </button>

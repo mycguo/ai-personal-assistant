@@ -252,12 +252,17 @@ button {
 
 .sourceRow {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 28px;
+  grid-template-columns: 18px minmax(0, 1fr) 28px 28px;
   gap: 8px;
   align-items: center;
   padding: 10px;
   border-radius: 8px;
   background: #f8fbfd;
+}
+
+.selectedSourceRow {
+  outline: 2px solid var(--accent-soft);
+  background: #eefaf7;
 }
 
 .sourceRow strong {
@@ -380,6 +385,57 @@ button {
   width: 28px;
   height: 28px;
   color: inherit;
+}
+
+.previewPanel {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 10px 32px rgba(23, 32, 38, 0.05);
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.previewHeader h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.previewHeader span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.previewActions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.previewText {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  max-height: 280px;
+  resize: vertical;
+  border: 0;
+  padding: 14px 16px;
+  background: #fbfcfe;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  outline: none;
 }
 
 .messageList {
@@ -530,6 +586,14 @@ button {
 
   .message {
     max-width: 100%;
+  }
+
+  .previewHeader {
+    display: grid;
+  }
+
+  .previewActions {
+    justify-content: flex-end;
   }
 
   .composer {
