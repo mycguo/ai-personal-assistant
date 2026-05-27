@@ -3,7 +3,7 @@ import json
 import pickle
 from typing import List, Optional, Dict, Any
 from langchain_openai import OpenAIEmbeddings
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 import numpy as np
 from datetime import datetime
 

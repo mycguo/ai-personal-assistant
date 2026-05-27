@@ -1,7 +1,7 @@
 import os
 from typing import List, Optional, Dict, Any
 from langchain_openai import OpenAIEmbeddings
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from pymilvus import MilvusClient, DataType
 import numpy as np
 

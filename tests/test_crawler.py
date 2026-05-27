@@ -6,6 +6,10 @@ def mock_get(*args, **kwargs):
     class Response:
         def __init__(self, text):
             self.text = text
+            self.encoding = 'utf-8'
+
+        def raise_for_status(self):
+            return None
     html = '<html><body><a href="https://example.com/page">Page</a></body></html>'
     return Response(html)
 
@@ -16,4 +20,3 @@ def test_crawl_returns_root():
         urls = crawler.start_crawling('https://example.com')
     assert 'https://example.com' in urls
     assert isinstance(urls, set)
-

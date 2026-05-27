@@ -2,7 +2,7 @@ import os
 from typing import List, Optional
 from langchain_milvus import Milvus
 from langchain_openai import OpenAIEmbeddings
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from pymilvus import connections, utility, Collection, MilvusException
 
 try:

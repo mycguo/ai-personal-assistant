@@ -1,9 +1,7 @@
 # Add app for adding to the knowledge base
 import streamlit as st
 from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
-import google.generativeai as genai
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from simple_vector_store import SimpleVectorStore as MilvusVectorStore
 import docx  # Import the python-docx library
 import pandas as pd
@@ -13,6 +11,10 @@ import assemblyai as aai
 from moviepy import VideoFileClip
 import boto3
 import os
+
+# Set a default USER_AGENT for loaders/libraries that require it.
+os.environ.setdefault("USER_AGENT", "ai-personal-assistant/1.0")
+
 import tempfile
 import shutil
 from langchain_community.document_loaders import WebBaseLoader
@@ -22,10 +24,6 @@ from webcrawer import WebCrawler
 import yt_dlp as youtube_dl
 from yt_dlp.utils import DownloadError
 from urllib.parse import parse_qs, urlparse
-
-#configuring the google api key
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-embedding = OpenAIEmbeddings(model="text-embedding-3-large")
 
 #tokens from https://www.assemblyai.com/ to transcribe the audio
 tokens = st.secrets["ASSEMBLYAI_API_KEY"]
