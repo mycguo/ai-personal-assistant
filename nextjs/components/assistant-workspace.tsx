@@ -36,6 +36,8 @@ type StoredState = {
   messages: ChatMessage[];
 };
 
+type ControlPanel = "documents" | "url" | "media" | "youtube" | "knowledge";
+
 const EMPTY_STATE: StoredState = {
   sources: [],
   chunks: [],
@@ -51,6 +53,7 @@ export function AssistantWorkspace() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [maxDepth, setMaxDepth] = useState(1);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<ControlPanel>("documents");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -118,6 +121,7 @@ export function AssistantWorkspace() {
 
       setState((current) => appendIngestResults(current, results));
       setSelectedSourceId(results[0]?.source.id ?? null);
+      setActivePanel("knowledge");
       setStatus(`Added ${results.reduce((sum, item) => sum + item.chunks.length, 0)} chunks.`);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
@@ -144,6 +148,7 @@ export function AssistantWorkspace() {
 
       setState((current) => appendIngestResults(current, [payload]));
       setSelectedSourceId(payload.source.id);
+      setActivePanel("knowledge");
       setStatus(`Added ${payload.chunks.length} chunks from ${value}.`);
       setUrl("");
     } catch (err) {
@@ -215,6 +220,7 @@ export function AssistantWorkspace() {
       if (payload.status === "completed") {
         setState((current) => appendIngestResults(current, [payload]));
         setSelectedSourceId(payload.source.id);
+        setActivePanel("knowledge");
         setStatus(`Added transcript from ${name}.`);
         return;
       }
@@ -245,6 +251,7 @@ export function AssistantWorkspace() {
 
       setState((current) => appendIngestResults(current, [payload]));
       setSelectedSourceId(payload.source.id);
+      setActivePanel("knowledge");
       setStatus(`Added ${payload.chunks.length} chunks from YouTube captions.`);
       setYoutubeUrl("");
     } catch (err) {
@@ -336,156 +343,235 @@ export function AssistantWorkspace() {
 
   return (
     <main className="workspace">
-      <aside className="sidebar" aria-label="Knowledge base controls">
-        <div className="brand">
-          <div className="brandMark">
-            <Sparkles size={20} aria-hidden="true" />
+      <header className="topNavigation" aria-label="Knowledge base controls">
+        <div className="topBar">
+          <div className="brand">
+            <div className="brandMark">
+              <Sparkles size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h1>AI Knowledge Assistant</h1>
+            </div>
           </div>
-          <div>
-            <h1>AI Knowledge Assistant</h1>
-            <p>Next.js and Vercel</p>
-          </div>
+
+          <nav className="navTabs" aria-label="Knowledge import tools">
+            <button
+              type="button"
+              className={activePanel === "documents" ? "navTab activeNavTab" : "navTab"}
+              aria-label="Documents"
+              aria-pressed={activePanel === "documents"}
+              title="Documents"
+              onClick={() => setActivePanel("documents")}
+            >
+              <Upload size={16} aria-hidden="true" />
+              <span>Documents</span>
+            </button>
+            <button
+              type="button"
+              className={activePanel === "url" ? "navTab activeNavTab" : "navTab"}
+              aria-label="URL"
+              aria-pressed={activePanel === "url"}
+              title="URL"
+              onClick={() => setActivePanel("url")}
+            >
+              <Globe2 size={16} aria-hidden="true" />
+              <span>URL</span>
+            </button>
+            <button
+              type="button"
+              className={activePanel === "media" ? "navTab activeNavTab" : "navTab"}
+              aria-label="Media"
+              aria-pressed={activePanel === "media"}
+              title="Media"
+              onClick={() => setActivePanel("media")}
+            >
+              <AudioLines size={16} aria-hidden="true" />
+              <span>Media</span>
+            </button>
+            <button
+              type="button"
+              className={activePanel === "youtube" ? "navTab activeNavTab" : "navTab"}
+              aria-label="YouTube"
+              aria-pressed={activePanel === "youtube"}
+              title="YouTube"
+              onClick={() => setActivePanel("youtube")}
+            >
+              <Video size={16} aria-hidden="true" />
+              <span>YouTube</span>
+            </button>
+            <button
+              type="button"
+              className={activePanel === "knowledge" ? "navTab activeNavTab" : "navTab"}
+              aria-label="Knowledge"
+              aria-pressed={activePanel === "knowledge"}
+              title="Knowledge"
+              onClick={() => setActivePanel("knowledge")}
+            >
+              <Database size={16} aria-hidden="true" />
+              <span>Knowledge</span>
+            </button>
+          </nav>
         </div>
 
-        <section className="panel">
-          <div className="sectionTitle">
-            <Upload size={17} aria-hidden="true" />
-            <h2>Add documents</h2>
-          </div>
-          <label className="dropzone">
-            <input
-              id="knowledge-files"
-              name="knowledge-files"
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json,.html,.htm,.xlsx"
-              onChange={(event) => void ingestFiles(event.target.files)}
-            />
-            <FileText size={26} aria-hidden="true" />
-            <span>Upload PDF, Word, Excel, CSV, JSON, Markdown, HTML, or text</span>
-          </label>
-        </section>
-
-        <section className="panel">
-          <div className="sectionTitle">
-            <Globe2 size={17} aria-hidden="true" />
-            <h2>Crawl URL</h2>
-          </div>
-          <input
-            id="crawl-url"
-            name="crawl-url"
-            className="input"
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://example.com"
-            type="url"
-          />
-          <div className="depthRow">
-            <label htmlFor="depth">Depth</label>
-            <input
-              id="depth"
-              name="depth"
-              type="range"
-              min="0"
-              max="3"
-              value={maxDepth}
-              onChange={(event) => setMaxDepth(Number(event.target.value))}
-            />
-            <span>{maxDepth}</span>
-          </div>
-          <button className="button buttonSecondary" onClick={() => void ingestUrl()}>
-            <RefreshCcw size={16} aria-hidden="true" />
-            Fetch URL
-          </button>
-        </section>
-
-        <section className="panel">
-          <div className="sectionTitle">
-            <AudioLines size={17} aria-hidden="true" />
-            <h2>Audio and video</h2>
-          </div>
-          <label className="compactDropzone">
-            <input
-              id="media-files"
-              name="media-files"
-              ref={mediaInputRef}
-              type="file"
-              accept="audio/*,video/*,.mp3,.mp4,.m4a,.wav,.webm,.mov"
-              onChange={(event) => void startMediaFileTranscription(event.target.files)}
-            />
-            <span>Upload audio or video for transcription</span>
-          </label>
-          <input
-            id="media-url"
-            name="media-url"
-            className="input"
-            value={mediaUrl}
-            onChange={(event) => setMediaUrl(event.target.value)}
-            placeholder="Public audio/video URL"
-            type="url"
-          />
-          <button className="button buttonSecondary" onClick={() => void startMediaUrlTranscription()}>
-            <AudioLines size={16} aria-hidden="true" />
-            Transcribe media URL
-          </button>
-        </section>
-
-        <section className="panel">
-          <div className="sectionTitle">
-            <Video size={17} aria-hidden="true" />
-            <h2>YouTube captions</h2>
-          </div>
-          <input
-            id="youtube-url"
-            name="youtube-url"
-            className="input"
-            value={youtubeUrl}
-            onChange={(event) => setYoutubeUrl(event.target.value)}
-            placeholder="https://youtube.com/watch?v=..."
-            type="url"
-          />
-          <button className="button buttonSecondary" onClick={() => void ingestYouTube()}>
-            <Video size={16} aria-hidden="true" />
-            Import captions
-          </button>
-        </section>
-
-        <section className="panel">
-          <div className="sectionTitle">
-            <Database size={17} aria-hidden="true" />
-            <h2>Knowledge base</h2>
-          </div>
-          <div className="statsGrid">
-            <Metric label="Sources" value={stats.sources.toLocaleString()} />
-            <Metric label="Chunks" value={stats.chunks.toLocaleString()} />
-            <Metric label="Chars" value={stats.characters.toLocaleString()} />
-          </div>
-          <div className="sourceList">
-            {state.sources.length === 0 ? (
-              <p className="emptyText">No sources yet.</p>
-            ) : (
-              state.sources.map((source) => (
-                <SourceRow
-                  key={source.id}
-                  source={source}
-                  isSelected={source.id === selectedSourceId}
-                  onRemove={removeSource}
-                  onSelect={setSelectedSourceId}
+        <section className="controlPanel" aria-label="Selected knowledge base control">
+          {activePanel === "documents" && (
+            <>
+              <div className="sectionTitle">
+                <Upload size={17} aria-hidden="true" />
+                <h2>Add documents</h2>
+              </div>
+              <label className="dropzone">
+                <input
+                  id="knowledge-files"
+                  name="knowledge-files"
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json,.html,.htm,.xlsx"
+                  onChange={(event) => void ingestFiles(event.target.files)}
                 />
-              ))
-            )}
-          </div>
-          <div className="actionRow">
-            <button className="iconButton" onClick={exportKnowledge} aria-label="Export knowledge base">
-              <Download size={16} aria-hidden="true" />
-            </button>
-            <button className="iconButton danger" onClick={resetWorkspace} aria-label="Clear knowledge base">
-              <Trash2 size={16} aria-hidden="true" />
-            </button>
-          </div>
+                <FileText size={26} aria-hidden="true" />
+                <span>Upload PDF, Word, Excel, CSV, JSON, Markdown, HTML, or text</span>
+              </label>
+            </>
+          )}
+
+          {activePanel === "url" && (
+            <>
+              <div className="sectionTitle">
+                <Globe2 size={17} aria-hidden="true" />
+                <h2>Crawl URL</h2>
+              </div>
+              <div className="controlGrid">
+                <input
+                  id="crawl-url"
+                  name="crawl-url"
+                  className="input"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://example.com"
+                  type="url"
+                />
+                <div className="depthRow">
+                  <label htmlFor="depth">Depth</label>
+                  <input
+                    id="depth"
+                    name="depth"
+                    type="range"
+                    min="0"
+                    max="3"
+                    value={maxDepth}
+                    onChange={(event) => setMaxDepth(Number(event.target.value))}
+                  />
+                  <span>{maxDepth}</span>
+                </div>
+                <button className="button buttonSecondary" onClick={() => void ingestUrl()}>
+                  <RefreshCcw size={16} aria-hidden="true" />
+                  Fetch URL
+                </button>
+              </div>
+            </>
+          )}
+
+          {activePanel === "media" && (
+            <>
+              <div className="sectionTitle">
+                <AudioLines size={17} aria-hidden="true" />
+                <h2>Audio and video</h2>
+              </div>
+              <div className="controlGrid">
+                <label className="compactDropzone">
+                  <input
+                    id="media-files"
+                    name="media-files"
+                    ref={mediaInputRef}
+                    type="file"
+                    accept="audio/*,video/*,.mp3,.mp4,.m4a,.wav,.webm,.mov"
+                    onChange={(event) => void startMediaFileTranscription(event.target.files)}
+                  />
+                  <span>Upload audio or video for transcription</span>
+                </label>
+                <input
+                  id="media-url"
+                  name="media-url"
+                  className="input"
+                  value={mediaUrl}
+                  onChange={(event) => setMediaUrl(event.target.value)}
+                  placeholder="Public audio/video URL"
+                  type="url"
+                />
+                <button className="button buttonSecondary" onClick={() => void startMediaUrlTranscription()}>
+                  <AudioLines size={16} aria-hidden="true" />
+                  Transcribe media URL
+                </button>
+              </div>
+            </>
+          )}
+
+          {activePanel === "youtube" && (
+            <>
+              <div className="sectionTitle">
+                <Video size={17} aria-hidden="true" />
+                <h2>YouTube captions</h2>
+              </div>
+              <div className="controlGrid">
+                <input
+                  id="youtube-url"
+                  name="youtube-url"
+                  className="input"
+                  value={youtubeUrl}
+                  onChange={(event) => setYoutubeUrl(event.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                  type="url"
+                />
+                <button className="button buttonSecondary" onClick={() => void ingestYouTube()}>
+                  <Video size={16} aria-hidden="true" />
+                  Import captions
+                </button>
+              </div>
+            </>
+          )}
+
+          {activePanel === "knowledge" && (
+            <>
+              <div className="sectionTitle">
+                <Database size={17} aria-hidden="true" />
+                <h2>Knowledge base</h2>
+              </div>
+              <div className="knowledgeLayout">
+                <div className="statsGrid">
+                  <Metric label="Sources" value={stats.sources.toLocaleString()} />
+                  <Metric label="Chunks" value={stats.chunks.toLocaleString()} />
+                  <Metric label="Chars" value={stats.characters.toLocaleString()} />
+                </div>
+                <div className="sourceList">
+                  {state.sources.length === 0 ? (
+                    <p className="emptyText">No sources yet.</p>
+                  ) : (
+                    state.sources.map((source) => (
+                      <SourceRow
+                        key={source.id}
+                        source={source}
+                        isSelected={source.id === selectedSourceId}
+                        onRemove={removeSource}
+                        onSelect={setSelectedSourceId}
+                      />
+                    ))
+                  )}
+                </div>
+                <div className="actionRow">
+                  <button className="iconButton" onClick={exportKnowledge} aria-label="Export knowledge base">
+                    <Download size={16} aria-hidden="true" />
+                  </button>
+                  <button className="iconButton danger" onClick={resetWorkspace} aria-label="Clear knowledge base">
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </section>
-      </aside>
+      </header>
 
       <section className="chatShell" aria-label="Chat with knowledge base">
         <header className="chatHeader">
@@ -493,7 +579,6 @@ export function AssistantWorkspace() {
             <p className="smallLabel">Queryable workspace</p>
             <h2>Ask across your uploaded knowledge</h2>
           </div>
-          <div className="runtimeBadge">Gemini via LangChain.js</div>
         </header>
 
         {(status || error) && (
@@ -537,18 +622,9 @@ export function AssistantWorkspace() {
         )}
 
         <div className="messageList">
-          {state.messages.length === 0 ? (
-            <div className="emptyState">
-              <Sparkles size={34} aria-hidden="true" />
-              <h3>Build a knowledge base, then ask a question.</h3>
-              <p>
-                Add documents or crawl a site. The assistant retrieves matching chunks and cites
-                the sources it used.
-              </p>
-            </div>
-          ) : (
+          {state.messages.length > 0 &&
             state.messages.map((message) => <MessageBubble key={message.id} message={message} />)
-          )}
+          }
           {isPending && (
             <div className="message assistantMessage">
               <Loader2 className="spin" size={16} aria-hidden="true" />

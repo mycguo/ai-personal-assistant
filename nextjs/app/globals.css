@@ -19,6 +19,7 @@
 
 html,
 body {
+  width: 100%;
   min-height: 100%;
 }
 
@@ -41,24 +42,104 @@ button {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
 }
 
-.sidebar {
+.topNavigation {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
-  border-right: 1px solid var(--border);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
   background: #fbfcfe;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 16px;
+}
+
+.navTabs {
+  display: flex;
+  min-width: 0;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.navTab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  gap: 7px;
+  border: 0;
+  border-radius: 7px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.navTab:hover,
+.activeNavTab {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 8px rgba(23, 32, 38, 0.08);
+}
+
+.controlPanel {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgba(23, 32, 38, 0.04);
+}
+
+.controlGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.controlGrid .compactDropzone,
+.controlGrid .buttonSecondary {
+  margin: 0;
+}
+
+.knowledgeLayout {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.knowledgeLayout .sourceList,
+.knowledgeLayout .actionRow {
+  margin-top: 0;
 }
 
 .brand {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 12px;
-  margin-bottom: 4px;
 }
 
 .brandMark {
@@ -73,8 +154,7 @@ button {
 
 .brand h1,
 .chatHeader h2,
-.sectionTitle h2,
-.emptyState h3 {
+.sectionTitle h2 {
   margin: 0;
 }
 
@@ -83,20 +163,14 @@ button {
   line-height: 1.15;
 }
 
-.brand p,
 .emptyText,
 .sourceRow span,
-.smallLabel,
-.emptyState p {
+.smallLabel {
   color: var(--muted);
 }
 
-.brand p {
-  margin: 3px 0 0;
-  font-size: 13px;
-}
-
 .panel {
+  min-width: 0;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -129,8 +203,8 @@ button {
 }
 
 .dropzone {
-  min-height: 132px;
-  padding: 18px;
+  min-height: 106px;
+  padding: 14px;
 }
 
 .compactDropzone {
@@ -244,7 +318,7 @@ button {
 
 .sourceList {
   display: grid;
-  max-height: 240px;
+  max-height: 132px;
   gap: 8px;
   margin-top: 12px;
   overflow: auto;
@@ -321,9 +395,11 @@ button {
 }
 
 .chatShell {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
   padding: 24px;
 }
 
@@ -349,16 +425,6 @@ button {
 .chatHeader h2 {
   font-size: 24px;
   line-height: 1.2;
-}
-
-.runtimeBadge {
-  flex: 0 0 auto;
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .notice {
@@ -440,35 +506,17 @@ button {
 
 .messageList {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-height: 0;
   gap: 14px;
   margin-top: 16px;
   overflow: auto;
   padding: 4px 4px 18px;
 }
 
-.emptyState {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  min-height: 360px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
-  color: var(--muted);
-  text-align: center;
-}
-
-.emptyState h3 {
-  margin-top: 14px;
-  color: var(--text);
-  font-size: 20px;
-}
-
-.emptyState p {
-  max-width: 480px;
-  margin: 8px 0 0;
-  line-height: 1.5;
+.messageList:empty {
+  display: none;
 }
 
 .message {
@@ -524,8 +572,10 @@ button {
 
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
+  flex: 0 0 auto;
   gap: 12px;
+  margin-top: 16px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -540,6 +590,13 @@ button {
   padding: 12px;
 }
 
+.composer .button {
+  height: 44px;
+  min-width: 132px;
+  justify-self: end;
+  align-self: start;
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }
@@ -550,25 +607,30 @@ button {
   }
 }
 
-@media (max-width: 900px) {
-  .workspace {
+@media (max-width: 620px) {
+  .topNavigation,
+  .chatShell {
+    padding: 16px;
+  }
+
+  .topBar,
+  .knowledgeLayout {
     grid-template-columns: 1fr;
   }
 
-  .sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
+  .topBar {
+    display: grid;
   }
 
-  .chatShell {
-    min-height: 720px;
+  .navTabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
   }
-}
 
-@media (max-width: 620px) {
-  .sidebar,
-  .chatShell {
-    padding: 16px;
+  .navTab {
+    min-width: 0;
+    padding: 0 8px;
   }
 
   .chatHeader,
@@ -578,10 +640,6 @@ button {
 
   .chatHeader {
     display: grid;
-  }
-
-  .runtimeBadge {
-    width: fit-content;
   }
 
   .message {
@@ -598,5 +656,29 @@ button {
 
   .composer {
     gap: 10px;
+  }
+
+  .composer .button {
+    width: 100%;
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 420px) {
+  .navTabs {
+    gap: 4px;
+  }
+
+  .navTab {
+    padding: 0;
+  }
+
+  .navTab span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 }
