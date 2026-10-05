@@ -6,13 +6,20 @@ import matplotlib.patches as mpatches
 import time
 import json
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 
 
 # Reusable function for retrieving paginated data from the API
 # https://cookbook.openai.com/examples/completions_usage_api
 def get_data(url, params):
     # Set up the API key and headers https://platform.openai.com/settings/organization/admin-keys
-    OPENAI_ADMIN_KEY = st.secrets["OPENAI_ADMIN_KEY"]
+    try:
+        OPENAI_ADMIN_KEY = st.secrets["OPENAI_ADMIN_KEY"]
+    except (KeyError, StreamlitSecretNotFoundError):
+        st.error("Usage and cost reporting requires OPENAI_ADMIN_KEY in Streamlit Secrets.")
+        return None
+
+    params = dict(params)
 
     headers = {
         "Authorization": f"Bearer {OPENAI_ADMIN_KEY}",
@@ -30,7 +37,11 @@ def get_data(url, params):
         if page_cursor:
             params["page"] = page_cursor
 
-        response = requests.get(url, headers=headers, params=params)
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+        except requests.RequestException:
+            st.error("Unable to reach the usage and cost API. Please try again later.")
+            return None
 
         if response.status_code == 200:
             data_json = response.json()
@@ -40,8 +51,11 @@ def get_data(url, params):
             if not page_cursor:
                 break
         else:
-            print(f"Error: {response.status_code}")
-            break
+            st.error(
+                f"Usage and cost API request failed (HTTP {response.status_code}). "
+                "The app owner should check the admin API key and organization permissions."
+            )
+            return None
 
     if all_data:
         print("Data retrieved successfully!")
@@ -73,8 +87,8 @@ params = {
 
 def plot_cost():
     usage_data = get_data(url, params)
-
-    print(json.dumps(usage_data, indent=2))
+    if usage_data is None:
+        return
 
     # Initialize a list to hold parsed records
     records = []
@@ -103,7 +117,11 @@ def plot_cost():
             )
 
     # Create a DataFrame from the records
-    df = pd.DataFrame(records)
+    df = pd.DataFrame(records, columns=[
+        "start_time", "end_time", "input_tokens", "output_tokens",
+        "input_cached_tokens", "input_audio_tokens", "output_audio_tokens",
+        "num_model_requests", "project_id", "user_id", "api_key_id", "model", "batch",
+    ])
 
     # Convert Unix timestamps to datetime for readability
     df["start_datetime"] = pd.to_datetime(df["start_time"], unit="s")
@@ -181,7 +199,8 @@ def plot_cost():
 
     # Initialize an empty list to store all data
     all_costs_data = get_data(costs_url, costs_params)
-    print(json.dumps(all_costs_data, indent=2))
+    if all_costs_data is None:
+        return
 
 
     # Initialize a list to hold parsed cost records
@@ -204,7 +223,9 @@ def plot_cost():
             )
 
     # Create a DataFrame from the cost records
-    cost_df = pd.DataFrame(cost_records)
+    cost_df = pd.DataFrame(cost_records, columns=[
+        "start_time", "end_time", "amount_value", "currency", "line_item", "project_id",
+    ])
 
     # Convert Unix timestamps to datetime for readability
     cost_df["start_datetime"] = pd.to_datetime(cost_df["start_time"], unit="s")
